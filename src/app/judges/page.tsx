@@ -31,7 +31,7 @@ const CASES = [
 
 const DOORS = [
   { href: '/replay', label: 'Replay any public repository', lookFor: 'what a hold would have been on a real project\u2019s recent pull requests, and what happened to them. It is read-only.' },
-  { href: '/console', label: 'Open the maintainer console', lookFor: 'ask the assistant to capture a hold. It refuses, because it has no tool that can. Then ask it for a chart.' },
+  { href: '/console', label: 'Open the maintainer console', lookFor: 'the refusal when you ask the assistant to capture a hold. It has no tool that can. Then ask it for a chart.' },
   { href: 'https://github.com/leejpsd/goodfaith/tree/master/evals/triage', label: 'Read the evaluation', lookFor: 'rules hashed and published before the run, a plain rule to beat, and every miss.' },
 ];
 
@@ -109,7 +109,7 @@ export default async function JudgesPage() {
         <div className="narrow">
           <p><strong>Real:</strong> every PayPal sandbox call and ID, PayPal&apos;s signed webhooks, the GitHub App on a real repository, the OpenAI calls, and the public pull requests in the evaluation and the replay.</p>
           <p><strong>Simulated:</strong> the money is sandbox money. The contributors and maintainers in the demo are test accounts. The decline is PayPal&apos;s own negative testing.</p>
-          <p><strong>Not shown:</strong> no outside project or contributor has used this. Nobody has measured whether a hold shrinks the flood, for this project or any other refundable bond.</p>
+          <p><strong>Not shown:</strong> no outside project or contributor has used this. We found no measurement of whether a hold shrinks the flood, for this project or any other refundable bond.</p>
         </div>
       </section>
     </main>

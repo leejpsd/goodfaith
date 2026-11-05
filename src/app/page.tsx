@@ -78,7 +78,7 @@ export default async function Home() {
             Maintainers estimate <a href="https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop">a quarter of incoming pull requests are low-quality AI slop</a>. <a href="https://ladybird.org/posts/changing-how-we-develop-ladybird/">Ladybird no longer accepts public pull requests</a>, <a href="https://tldraw.dev/blog/stay-away-from-my-trash">tldraw closes outside ones automatically</a>, and <a href="https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/">GitHub added a setting to turn them off</a>. In public data we collected, repositories with 1,000 or more stars using a <code>slop</code> label on a stranger&apos;s pull request went from 2 to 63 in a little over a year.
           </p>
           <p>
-            A stranger with a good fix is the one who loses. Goodfaith is for a project that has closed, or is about to. Against an open door, a hold is a toll. Against a closed one, it is more access than that stranger has today. We do not claim a hold shrinks the flood, because nobody has measured that for any refundable bond. <Link href="/replay">See what it would do on a real project</Link>.
+            A stranger with a good fix is the one who loses. Goodfaith is for a project that has closed, or is about to. Against an open door, a hold is a toll. Against a closed one, it is more access than that stranger has today. We do not claim a hold shrinks the flood, because we found no measurement of that for any refundable bond. <Link href="/replay">See what it would do on a real project</Link>.
           </p>
         </div>
       </section>
