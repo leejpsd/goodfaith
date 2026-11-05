@@ -13,6 +13,7 @@
     "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
+    "@paypal/paypal-server-sdk": "2.5.0",
     "ag-studio": "3.1.0",
     "ag-studio-react": "3.1.0",
     "drizzle-orm": "0.45.4",

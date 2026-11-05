@@ -35,6 +35,10 @@ class FakeGitHub implements GitHub {
     this.checks.set(id, state);
     return id;
   };
+  closed: number[] = [];
+  closePullRequest = async (_o: string, _r: string, number: number) => {
+    this.closed.push(number);
+  };
   updateCheck = async (_o: string, _r: string, id: number, state: CheckState) => {
     this.checks.set(id, state);
   };

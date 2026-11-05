@@ -545,6 +545,13 @@ button.button:disabled {
   margin-top: 1rem;
 }
 
+.simulate {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
 paypal-button {
   display: block;
   width: 100%;

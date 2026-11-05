@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { DEMO } from './constants';
 
 // The try page acts through two test accounts on one demo repository, and nothing else.
 // Both tokens stay on the server, and every action comes from the fixed lists below.
 const API = 'https://api.github.com';
 
-export const DEMO = { owner: 'leejpsd', repo: 'goodfaith-demo', contributor: 'leejpsd-goodfaith' } as const;
+export { DEMO };
 const FORK = `${DEMO.contributor}/${DEMO.repo}`;
 const UPSTREAM = `${DEMO.owner}/${DEMO.repo}`;
 

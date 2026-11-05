@@ -40,6 +40,10 @@ class FakeGitHub implements GitHub {
     this.checks.set(id, state);
     return id;
   };
+  closed: number[] = [];
+  closePullRequest = async (_o: string, _r: string, number: number) => {
+    this.closed.push(number);
+  };
   updateCheck = async (_o: string, _r: string, id: number, state: CheckState) => {
     if (this.failing) throw new Error('GitHub is down');
     this.checks.set(id, state);
@@ -56,15 +60,19 @@ class FakePayPal implements PayPal {
   captureError: PayPalError | null = null;
   orders = 0;
   createOrder = async () => `ORDER-${++this.orders}`;
-  authorizeOrder = async (orderId: string, requestId: string) => {
+  simulated: boolean[] = [];
+  voidError: PayPalError | null = null;
+  authorizeOrder = async (orderId: string, requestId: string, options?: { simulateDecline?: boolean }) => {
     this.calls.push(`authorize ${orderId}`);
     this.requestIds.push(requestId);
-    if (this.declineAuthorize) throw new PayPalError('authorize order', 422, 'INSTRUMENT_DECLINED', 'debug');
+    this.simulated.push(options?.simulateDecline === true);
+    if (this.declineAuthorize || options?.simulateDecline) throw new PayPalError('authorize order', 422, 'INSTRUMENT_DECLINED', 'debug');
     return { authorizationId: `AUTH-${orderId}`, status: 'CREATED' };
   };
   voidAuthorization = async (id: string, requestId: string) => {
     this.calls.push(`void ${id}`);
     this.requestIds.push(requestId);
+    if (this.voidError) throw this.voidError;
   };
   reauthorize = async (id: string) => {
     this.calls.push(`reauthorize ${id}`);
@@ -230,6 +238,48 @@ describe('placing a hold', () => {
   });
 });
 
+describe('failures while placing a hold', () => {
+  it('throws on a PayPal outage, so the page can say it was not a decline', async () => {
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    paypal.authorizeOrder = async () => {
+      throw new PayPalError('authorize order', 503, undefined, 'debug');
+    };
+    await expect(confirmHold(hold, pr.id, begun.orderId)).rejects.toThrow('503');
+    expect((await holdRow(pr.id)).state).toBe('awaiting_approval');
+  });
+
+  it('only lets the test account simulate a decline', async () => {
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    expect(await confirmHold(hold, pr.id, begun.orderId, { simulateDecline: true })).toEqual({ ok: true });
+    expect(paypal.simulated).toEqual([false]);
+  });
+
+  it('voids the authorization if the app cannot record it', async () => {
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    const broken = {
+      ...hold,
+      db: new Proxy(db, {
+        get(target, key, receiver) {
+          if (key === 'update') {
+            return () => {
+              throw new Error('database is down');
+            };
+          }
+          return Reflect.get(target, key, receiver);
+        },
+      }),
+    };
+    await expect(confirmHold(broken, pr.id, begun.orderId)).rejects.toThrow('database is down');
+    expect(paypal.calls.some((c) => c.startsWith('void AUTH-'))).toBe(true);
+  });
+});
+
 describe('a good-faith review', () => {
   it('voids the hold in full when a maintainer reviews', async () => {
     const pr = await placedHold();
@@ -290,6 +340,21 @@ describe('a good-faith review', () => {
 });
 
 describe('a forfeit', () => {
+  it('closes the pull request in the same comment', async () => {
+    await placedHold();
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    expect(github.closed).toEqual([1]);
+    expect(github.comments.at(-1)).toContain('closed this pull request');
+  });
+
+  it('keeps the forfeit open when that close comes back from GitHub', async () => {
+    const pr = await placedHold();
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    await onPullRequest(deps, prEvent('closed'));
+    expect((await holdRow(pr.id)).state).toBe('forfeit_pending');
+    expect(paypal.calls.some((c) => c.startsWith('void'))).toBe(false);
+  });
+
   it('moves no money until the appeal window closes', async () => {
     const pr = await placedHold();
     await onIssueComment(deps, say('!forfeit copied spam'));
@@ -445,6 +510,26 @@ describe('PayPal webhooks', () => {
     const rows = await db.select().from(ledgerEvents).where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'voided')));
     expect(rows).toHaveLength(1);
     expect(rows[0]!.reconciledAt).not.toBeNull();
+  });
+
+  it('treats a capture webhook that beats the save as this app\'s own capture', async () => {
+    const pr = await placedHold();
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    await db.update(holds).set({ appealEndsAt: new Date(Date.now() - 1000) }).where(eq(holds.pullRequestId, pr.id));
+    const row = await holdRow(pr.id);
+    await onPayPalEvent(hold, event('PAYMENT.CAPTURE.COMPLETED', { id: 'CAP-EARLY', supplementary_data: { related_ids: { authorization_id: row.authorizationId! } } }));
+    const after = await holdRow(pr.id);
+    expect(after).toMatchObject({ state: 'captured', captureId: 'CAP-EARLY' });
+    expect(after.capturedAt).not.toBeNull();
+    expect(github.comments.at(-1)).not.toContain('outside this app');
+    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured']);
+  });
+
+  it('treats a void PayPal says already happened as done', async () => {
+    const pr = await placedHold();
+    paypal.voidError = new PayPalError('void', 422, 'PREVIOUSLY_VOIDED', 'debug');
+    await onPullRequestReview(deps, review());
+    expect((await holdRow(pr.id)).state).toBe('voided');
   });
 
   it('records a void made on the PayPal dashboard', async () => {

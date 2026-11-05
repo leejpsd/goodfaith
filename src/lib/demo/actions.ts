@@ -16,10 +16,10 @@ export const ACTIONS = {
 export type TryAction = keyof typeof ACTIONS;
 
 export function availableActions(status: PullRequestStatus, hold: StoredHoldState | null): TryAction[] {
-  if (status === 'merged' || status === 'closed' || status === 'blocked') return [];
+  // A forfeit closes the pull request, and the appeal and what follows go on after that.
   switch (hold) {
     case 'held':
-      return ['review', 'forfeit'];
+      return status === 'in_review' ? ['review', 'forfeit'] : [];
     case 'forfeit_pending':
       return ['appeal', 'release'];
     case 'appealed':

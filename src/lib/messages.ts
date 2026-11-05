@@ -34,7 +34,7 @@ export const releasedComment = (login: string, cents: number, because: string) =
   `@${login}, your ${money(cents)} hold is released in full, because ${because}.`;
 
 export const forfeitComment = (input: { login: string; by: string; cents: number; reason: string; appealEndsAt: Date }) =>
-  `@${input.by} moved to forfeit the ${money(input.cents)} hold: ${input.reason}\n\nNo money has moved. @${input.login}, you can reply \`!appeal <reason>\` until ${input.appealEndsAt.toISOString()}. A maintainer can reply \`!release\` at any time.`;
+  `@${input.by} moved to forfeit the ${money(input.cents)} hold and closed this pull request: ${input.reason}\n\nNo money has moved. @${input.login}, you can reply \`!appeal <reason>\` until ${input.appealEndsAt.toISOString()}. A maintainer can reply \`!release\` at any time.`;
 
 export const appealComment = (login: string) =>
   `@${login} appealed. The hold stays in place and nothing can be captured until a maintainer answers with \`!release\` or \`!uphold\`. If nobody answers, the hold is released before PayPal would expire it.`;

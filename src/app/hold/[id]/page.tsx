@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
-import { DEMO } from '@/lib/demo/github';
+import { DEMO } from '@/lib/demo/constants';
 import { holds, projects, pullRequests } from '@/db/schema';
 import { AUTHORIZATION_DAYS, toPayPalValue, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
 import { holdAmount } from '@/server/hold-flow';
@@ -59,7 +59,7 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
               <li>Only a maintainer can forfeit it, with a stated reason, and you get {project.appealDays === 1 ? '1 day' : `${project.appealDays} days`} to appeal first. No model can.</li>
               <li>A hold nobody acts on is released after {AUTHORIZATION_DAYS - VOID_BEFORE_EXPIRY_DAYS} days.</li>
             </ul>
-            <HoldButton pullRequestId={pr.id} clientId={process.env.PAYPAL_CLIENT_ID ?? ''} amount={toPayPalValue(cents)} />
+            <HoldButton pullRequestId={pr.id} clientId={process.env.PAYPAL_CLIENT_ID ?? ''} amount={toPayPalValue(cents)} canSimulateDecline={pr.authorLogin === DEMO.contributor} />
           </section>
         </>
       ) : (

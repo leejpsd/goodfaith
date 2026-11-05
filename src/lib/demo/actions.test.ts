@@ -14,6 +14,12 @@ describe('availableActions', () => {
     expect(availableActions('in_review', 'captured')).toEqual(['reverse']);
   });
 
+  it('keeps offering the appeal after a forfeit closed the pull request', () => {
+    expect(availableActions('closed', 'forfeit_pending')).toEqual(['appeal', 'release']);
+    expect(availableActions('closed', 'appealed')).toEqual(['uphold', 'release']);
+    expect(availableActions('closed', 'captured')).toEqual(['reverse']);
+  });
+
   it('offers nothing at the end', () => {
     for (const state of ['voided', 'refunded', 'paid_out'] as const) expect(availableActions('in_review', state)).toEqual([]);
     expect(availableActions('in_review', null)).toEqual([]);

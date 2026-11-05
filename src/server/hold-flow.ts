@@ -19,6 +19,7 @@ import {
   releasedComment,
   upheldComment,
 } from '@/lib/messages';
+import { DEMO } from '@/lib/demo/constants';
 import { PayPalError } from '@/lib/paypal/client';
 import { readConfirmation, readPayout, type PayPalEvent } from '@/lib/paypal/webhook';
 import { bandCents } from '@/lib/triage/triage';
@@ -60,6 +61,14 @@ async function tell(deps: HoldDeps, { pr, project }: Scope, message: { check?: C
     if (message.comment) await github.comment(project.owner, project.repo, pr.number, message.comment);
   } catch (error) {
     console.error('GitHub notification failed', pr.id, error instanceof Error ? error.message : 'unknown error');
+  }
+}
+
+async function closePullRequest(deps: HoldDeps, { pr, project }: Scope) {
+  try {
+    await deps.githubFor(project.installationId).closePullRequest(project.owner, project.repo, pr.number);
+  } catch (error) {
+    console.error('Closing the pull request failed', pr.id, error instanceof Error ? error.message : 'unknown error');
   }
 }
 
@@ -107,7 +116,7 @@ export async function beginHold(deps: HoldDeps, pullRequestId: string): Promise<
   return row ? { orderId } : { refused: 'not_waiting' };
 }
 
-export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId: string): Promise<{ ok: true } | { refused: Refusal }> {
+export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId: string, options: { simulateDecline?: boolean } = {}): Promise<{ ok: true } | { refused: Refusal }> {
   const scope = await scopeOf(deps, pullRequestId);
   const row = await holdOf(deps, pullRequestId);
   if (!scope || !row) return { refused: 'not_found' };
@@ -116,20 +125,30 @@ export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId
   // A vouch or a close can arrive while the buyer is on PayPal. Nothing is held in that case.
   if (scope.pr.status !== 'waiting') return { refused: 'not_waiting' };
 
+  // Only the demo's test account may ask PayPal's sandbox to act out a decline.
+  const simulateDecline = options.simulateDecline === true && scope.pr.authorLogin === DEMO.contributor;
   let authorization;
   try {
-    authorization = await deps.paypal.authorizeOrder(orderId, `hold-${row.id}-authorize-${orderId}`);
+    authorization = await deps.paypal.authorizeOrder(orderId, `hold-${row.id}-authorize-${orderId}`, { simulateDecline });
   } catch (error) {
-    if (error instanceof PayPalError && !error.retryable) return { refused: 'declined' };
+    if (error instanceof PayPalError && error.status === 422) return { refused: 'declined' };
     throw error;
   }
   if (authorization.status === 'DENIED') return { refused: 'declined' };
 
-  const [saved] = await deps.db
-    .update(holds)
-    .set({ state: 'held', authorizationId: authorization.authorizationId, authorizedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(holds.id, row.id), eq(holds.state, 'awaiting_approval')))
-    .returning();
+  let saved: HoldRow | undefined;
+  try {
+    [saved] = await deps.db
+      .update(holds)
+      .set({ state: 'held', authorizationId: authorization.authorizationId, authorizedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(holds.id, row.id), eq(holds.state, 'awaiting_approval')))
+      .returning();
+  } catch (error) {
+    // PayPal holds the money and this app has no record of it, so give the money back before
+    // telling the buyer that nothing was held.
+    await deps.paypal.voidAuthorization(authorization.authorizationId, `hold-${row.id}-void-${authorization.authorizationId}`);
+    throw error;
+  }
   if (!saved) return { ok: true };
 
   await deps.db.update(pullRequests).set({ status: 'in_review', updatedAt: new Date() }).where(eq(pullRequests.id, pullRequestId));
@@ -144,7 +163,12 @@ async function runEffects(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, 
   for (const effect of effects) {
     switch (effect) {
       case 'void':
-        await deps.paypal.voidAuthorization(authorizationId, `hold-${row.id}-void-${authorizationId}`);
+        try {
+          await deps.paypal.voidAuthorization(authorizationId, `hold-${row.id}-void-${authorizationId}`);
+        } catch (error) {
+          // Already released, by a repeat or on PayPal's dashboard, which is the wanted result.
+          if (!(error instanceof PayPalError) || error.issue !== 'PREVIOUSLY_VOIDED') throw error;
+        }
         break;
       case 'reauthorize':
         authorizationId = await deps.paypal.reauthorize(authorizationId, row.cents, `hold-${row.id}-reauthorize`);
@@ -237,6 +261,8 @@ export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclu
         check: CHECK.forfeitPending,
         comment: forfeitComment({ login, by: actor, cents: saved.cents, reason: command.reason, appealEndsAt: saved.appealEndsAt! }),
       });
+      // One comment deals with the pull request. An open forfeit survives the close.
+      await closePullRequest(deps, scope);
       return;
     }
     case 'appeal': {
@@ -404,7 +430,11 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
     return;
   }
 
-  // PayPal moved the hold without this app, for example from the dashboard.
+  // A capture this app asked for can report back before its own save. The window has closed and
+  // a maintainer forfeited, so this is that capture finishing, and the payout must still follow.
+  const ours = confirmation.confirmed === 'captured' && found.hold.state === 'forfeit_pending' && found.hold.appealEndsAt !== null && found.hold.appealEndsAt <= new Date();
+
+  // Otherwise PayPal moved the hold without this app, for example from the dashboard.
   const paypalId = confirmation.confirmed === 'voided' ? confirmation.authorizationId : confirmation.confirmed === 'captured' ? confirmation.captureId : confirmation.refundId;
   const [saved] = await deps.db
     .update(holds)
@@ -412,13 +442,18 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
       state: next.state,
       appealEndsAt: null,
       updatedAt: new Date(),
-      ...(confirmation.confirmed === 'captured' ? { captureId: confirmation.captureId } : {}),
+      ...(confirmation.confirmed === 'captured' ? { captureId: confirmation.captureId, capturedAt: new Date() } : {}),
       ...(confirmation.confirmed === 'refunded' ? { refundId: confirmation.refundId } : {}),
     })
     .where(and(eq(holds.id, found.hold.id), eq(holds.state, found.hold.state)))
     .returning();
   if (!saved) return;
   const scope = { pr: found.pr, project: found.project };
+  if (ours) {
+    await record(deps, scope, saved, 'captured', { paypalId, actor: saved.forfeitedBy, note: saved.forfeitReason ?? undefined, reconciled: true });
+    await tell(deps, scope, { check: CHECK.captured, comment: capturedComment({ login: scope.pr.authorLogin, cents: saved.cents, by: saved.forfeitedBy }) });
+    return;
+  }
   await record(deps, scope, saved, kind, { paypalId, actor: 'PayPal', note: 'changed outside this app', reconciled: true });
   const check = kind === 'voided' ? CHECK.released : kind === 'captured' ? CHECK.captured : CHECK.refunded;
   await tell(deps, scope, { check, comment: changedOnPayPalComment(next.state) });

@@ -1,17 +1,32 @@
 import { randomUUID } from 'node:crypto';
+import {
+  ApiError,
+  CheckoutPaymentIntent,
+  Client,
+  Environment,
+  OrdersController,
+  PaymentsController,
+  PaypalExperienceUserAction,
+  PaypalWalletContextShippingPreference,
+  TransactionSearchController,
+} from '@paypal/paypal-server-sdk';
 
 // Sandbox only, on purpose. Nothing in this project can reach live PayPal.
 const API = 'https://api-m.sandbox.paypal.com';
 const ATTEMPTS = 3;
 
 export class PayPalError extends Error {
-  constructor(
-    readonly operation: string,
-    readonly status: number,
-    readonly issue: string | undefined,
-    readonly debugId: string | undefined,
-  ) {
+  readonly operation: string;
+  readonly status: number;
+  readonly issue: string | undefined;
+  readonly debugId: string | undefined;
+
+  constructor(operation: string, status: number, issue: string | undefined, debugId: string | undefined) {
     super(`PayPal ${operation} returned ${status}${issue ? ` ${issue}` : ''}${debugId ? ` [debug_id ${debugId}]` : ''}`);
+    this.operation = operation;
+    this.status = status;
+    this.issue = issue;
+    this.debugId = debugId;
   }
   get retryable() {
     return this.status === 429 || this.status >= 500;
@@ -30,7 +45,7 @@ export interface WebhookHeaders {
 // a request ID, so a retry returns the first result and cannot move money twice.
 export interface PayPal {
   createOrder(input: { cents: number; description: string; referenceId: string; returnUrl: string; cancelUrl: string }): Promise<string>;
-  authorizeOrder(orderId: string, requestId: string): Promise<{ authorizationId: string; status: string }>;
+  authorizeOrder(orderId: string, requestId: string, options?: { simulateDecline?: boolean }): Promise<{ authorizationId: string; status: string }>;
   voidAuthorization(authorizationId: string, requestId: string): Promise<void>;
   reauthorize(authorizationId: string, cents: number, requestId: string): Promise<string>;
   capture(authorizationId: string, cents: number, requestId: string): Promise<{ captureId: string; status: string }>;
@@ -40,7 +55,8 @@ export interface PayPal {
   verifyWebhook(headers: WebhookHeaders, rawBody: string): Promise<boolean>;
 }
 
-const usd = (cents: number) => ({ currency_code: 'USD', value: (cents / 100).toFixed(2) });
+const toValue = (cents: number) => (cents / 100).toFixed(2);
+const usd = (cents: number) => ({ currencyCode: 'USD', value: toValue(cents) });
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
 function credentials() {
@@ -80,12 +96,6 @@ function parseError(text: string): ErrorBody {
   }
 }
 
-async function read<T>(operation: string, path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${await accessToken()}` }, signal: AbortSignal.timeout(30_000) });
-  if (!r.ok) throw new PayPalError(operation, r.status, undefined, r.headers.get('paypal-debug-id') ?? undefined);
-  return (await r.json()) as T;
-}
-
 async function call<T>(operation: string, path: string, body: string | undefined, requestId: string): Promise<T> {
   let failure: PayPalError | undefined;
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -119,75 +129,135 @@ async function call<T>(operation: string, path: string, body: string | undefined
   throw failure;
 }
 
+// The Server SDK covers orders, payments and transaction search. Its defaults are no retries
+// and no timeout, so both are set here. POST is safe to retry because every money call carries
+// a request ID, and a repeat of one returns the first result.
+let sdk: Client | undefined;
+
+function sdkClient(): Client {
+  if (!sdk) {
+    const { PAYPAL_CLIENT_ID: oAuthClientId, PAYPAL_CLIENT_SECRET: oAuthClientSecret } = process.env;
+    if (!oAuthClientId || !oAuthClientSecret) throw new Error('PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET is not set');
+    sdk = new Client({
+      environment: Environment.Sandbox,
+      clientCredentialsAuthCredentials: { oAuthClientId, oAuthClientSecret },
+      timeout: 30_000,
+      httpClientOptions: {
+        timeout: 30_000,
+        retryConfig: { maxNumberOfRetries: ATTEMPTS - 1, retryInterval: 1, backoffFactor: 2, maximumRetryWaitTime: 30, retryOnTimeout: true, httpStatusCodesToRetry: [429, 500, 502, 503, 504], httpMethodsToRetry: ['GET', 'POST'] },
+      },
+    });
+  }
+  return sdk;
+}
+
+function readBody(body: unknown): ErrorBody {
+  return typeof body === 'string' ? parseError(body) : {};
+}
+
+// Every SDK failure becomes one PayPalError, so the rules above it never see the SDK's types.
+async function viaSdk<T>(operation: string, run: () => Promise<{ result: T }>): Promise<T> {
+  try {
+    return (await run()).result;
+  } catch (error) {
+    if (!(error instanceof ApiError)) {
+      const failure = new PayPalError(operation, 0, 'network', undefined);
+      console.error(failure.message, error instanceof Error ? error.message : 'unknown error');
+      throw failure;
+    }
+    const body = (error.result as ErrorBody | undefined) ?? readBody(error.body);
+    const failure = new PayPalError(operation, error.statusCode, body.details?.[0]?.issue ?? body.name, body.debug_id ?? error.headers?.['paypal-debug-id']);
+    console.error(failure.message);
+    throw failure;
+  }
+}
+
+const REPRESENTATION = 'return=representation';
+
+// PayPal's own negative testing: the sandbox answers as if the payment method was declined.
+const DECLINE = JSON.stringify({ mock_application_codes: 'INSTRUMENT_DECLINED' });
+
 export function paypalClient(): PayPal {
+  const orders = () => new OrdersController(sdkClient());
+  const payments = () => new PaymentsController(sdkClient());
   return {
     async createOrder({ cents, description, referenceId, returnUrl, cancelUrl }) {
-      const order = await call<{ id: string }>(
-        'create order',
-        '/v2/checkout/orders',
-        JSON.stringify({
-          intent: 'AUTHORIZE',
-          purchase_units: [{ reference_id: referenceId, description, amount: usd(cents) }],
-          payment_source: {
-            paypal: {
-              experience_context: { brand_name: 'Goodfaith', shipping_preference: 'NO_SHIPPING', user_action: 'CONTINUE', return_url: returnUrl, cancel_url: cancelUrl },
+      const order = await viaSdk('create order', () =>
+        orders().createOrder({
+          paypalRequestId: randomUUID(),
+          prefer: REPRESENTATION,
+          body: {
+            intent: CheckoutPaymentIntent.Authorize,
+            purchaseUnits: [{ referenceId, description, amount: usd(cents) }],
+            paymentSource: {
+              paypal: {
+                experienceContext: {
+                  brandName: 'Goodfaith',
+                  shippingPreference: PaypalWalletContextShippingPreference.NoShipping,
+                  userAction: PaypalExperienceUserAction.Continue,
+                  returnUrl,
+                  cancelUrl,
+                },
+              },
             },
           },
         }),
-        randomUUID(),
       );
+      if (!order.id) throw new PayPalError('create order', 200, 'NO_ORDER_ID', undefined);
       return order.id;
     },
-    async authorizeOrder(orderId, requestId) {
-      const order = await call<{ purchase_units?: { payments?: { authorizations?: { id: string; status: string }[] } }[] }>(
-        'authorize order',
-        `/v2/checkout/orders/${orderId}/authorize`,
-        undefined,
-        requestId,
+    async authorizeOrder(orderId, requestId, options) {
+      const order = await viaSdk('authorize order', () =>
+        orders().authorizeOrder({ id: orderId, paypalRequestId: requestId, prefer: REPRESENTATION, body: {}, ...(options?.simulateDecline ? { paypalMockResponse: DECLINE } : {}) }),
       );
-      const authorization = order.purchase_units?.[0]?.payments?.authorizations?.[0];
-      if (!authorization) throw new PayPalError('authorize order', 200, 'NO_AUTHORIZATION', undefined);
-      return { authorizationId: authorization.id, status: authorization.status };
+      const authorization = order.purchaseUnits?.[0]?.payments?.authorizations?.[0];
+      if (!authorization?.id) throw new PayPalError('authorize order', 200, 'NO_AUTHORIZATION', undefined);
+      return { authorizationId: authorization.id, status: authorization.status ?? 'CREATED' };
     },
     async voidAuthorization(authorizationId, requestId) {
-      await call('void', `/v2/payments/authorizations/${authorizationId}/void`, undefined, requestId);
+      await viaSdk('void', () => payments().voidPayment({ authorizationId, paypalRequestId: requestId, prefer: REPRESENTATION }));
     },
     async reauthorize(authorizationId, cents, requestId) {
-      const j = await call<{ id: string }>('reauthorize', `/v2/payments/authorizations/${authorizationId}/reauthorize`, JSON.stringify({ amount: usd(cents) }), requestId);
-      return j.id;
+      const authorization = await viaSdk('reauthorize', () => payments().reauthorizePayment({ authorizationId, paypalRequestId: requestId, prefer: REPRESENTATION, body: { amount: usd(cents) } }));
+      if (!authorization.id) throw new PayPalError('reauthorize', 200, 'NO_AUTHORIZATION', undefined);
+      return authorization.id;
     },
     async capture(authorizationId, cents, requestId) {
-      const j = await call<{ id: string; status: string }>(
-        'capture',
-        `/v2/payments/authorizations/${authorizationId}/capture`,
-        JSON.stringify({ amount: usd(cents), final_capture: true }),
-        requestId,
+      const capture = await viaSdk('capture', () =>
+        payments().captureAuthorizedPayment({ authorizationId, paypalRequestId: requestId, prefer: REPRESENTATION, body: { amount: usd(cents), finalCapture: true } }),
       );
-      return { captureId: j.id, status: j.status };
+      if (!capture.id) throw new PayPalError('capture', 200, 'NO_CAPTURE_ID', undefined);
+      return { captureId: capture.id, status: capture.status ?? 'COMPLETED' };
     },
     async refund(captureId, requestId) {
-      return (await call<{ id: string }>('refund', `/v2/payments/captures/${captureId}/refund`, undefined, requestId)).id;
+      const refund = await viaSdk('refund', () => payments().refundCapturedPayment({ captureId, paypalRequestId: requestId, prefer: REPRESENTATION, body: {} }));
+      if (!refund.id) throw new PayPalError('refund', 200, 'NO_REFUND_ID', undefined);
+      return refund.id;
     },
+    // One page of 500 is plenty for this demo's volume, and each run looks at a short range.
+    async searchTransactions(start, end) {
+      const found = await viaSdk('transaction search', () =>
+        new TransactionSearchController(sdkClient()).searchTransactions({
+          startDate: `${start.toISOString().slice(0, 19)}Z`,
+          endDate: `${end.toISOString().slice(0, 19)}Z`,
+          fields: 'transaction_info',
+          pageSize: 500,
+        }),
+      );
+      return (found.transactionDetails ?? []).flatMap((detail) => (detail.transactionInfo?.transactionId ? [detail.transactionInfo.transactionId] : []));
+    },
+    // The SDK has no Payouts or webhook verification, so these two stay on REST.
     async payout({ cents, receiver, note, senderId }, requestId) {
       const j = await call<{ batch_header: { payout_batch_id: string } }>(
         'payout',
         '/v1/payments/payouts',
         JSON.stringify({
           sender_batch_header: { sender_batch_id: senderId, email_subject: 'A forfeited Goodfaith hold', email_message: note },
-          items: [{ recipient_type: 'EMAIL', amount: { value: (cents / 100).toFixed(2), currency: 'USD' }, receiver, note, sender_item_id: senderId }],
+          items: [{ recipient_type: 'EMAIL', amount: { value: toValue(cents), currency: 'USD' }, receiver, note, sender_item_id: senderId }],
         }),
         requestId,
       );
       return j.batch_header.payout_batch_id;
-    },
-    // One page of 500 is plenty for this demo's volume, and each run looks at a short range.
-    async searchTransactions(start, end) {
-      const range = `start_date=${start.toISOString().slice(0, 19)}Z&end_date=${end.toISOString().slice(0, 19)}Z`;
-      const j = await read<{ transaction_details?: { transaction_info: { transaction_id: string } }[] }>(
-        'transaction search',
-        `/v1/reporting/transactions?${range}&fields=transaction_info&page_size=500`,
-      );
-      return (j.transaction_details ?? []).map((t) => t.transaction_info.transaction_id);
     },
     async verifyWebhook(headers, rawBody) {
       const webhookId = process.env.PAYPAL_WEBHOOK_ID;

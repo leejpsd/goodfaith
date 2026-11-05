@@ -47,8 +47,9 @@ async function post(url: string, body?: unknown) {
   return { ok: response.ok, ...json };
 }
 
-export function HoldButton({ pullRequestId, clientId, amount }: { pullRequestId: string; clientId: string; amount: string }) {
+export function HoldButton({ pullRequestId, clientId, amount, canSimulateDecline }: { pullRequestId: string; clientId: string; amount: string; canSimulateDecline: boolean }) {
   const router = useRouter();
+  const simulate = useRef(false);
   const session = useRef<PaymentSession | null>(null);
   const [ready, setReady] = useState(false);
   const [working, setWorking] = useState(false);
@@ -66,7 +67,7 @@ export function HoldButton({ pullRequestId, clientId, amount }: { pullRequestId:
       session.current = sdk.createPayPalOneTimePaymentSession({
         onApprove: async ({ orderId }) => {
           setWorking(true);
-          const result = await post(`/api/holds/${pullRequestId}/authorize`, { orderId });
+          const result = await post(`/api/holds/${pullRequestId}/authorize`, { orderId, simulateDecline: simulate.current });
           setWorking(false);
           if (result.ok) router.refresh();
           else setMessage(MESSAGES[result.refused ?? ''] ?? FAILED);
@@ -106,6 +107,11 @@ export function HoldButton({ pullRequestId, clientId, amount }: { pullRequestId:
       <Script src="https://www.sandbox.paypal.com/web-sdk/v6/core" strategy="afterInteractive" onReady={() => void setUp()} onError={() => setUnavailable(true)} />
       {/* No `type`, which leaves just the PayPal logo. The other types all say to pay or buy, and this is a hold. */}
       {ready && !working && <paypal-button class="paypal-gold" onClick={start} />}
+      {canSimulateDecline && ready && (
+        <label className="simulate">
+          <input type="checkbox" onChange={(event) => { simulate.current = event.target.checked; }} /> Have PayPal&apos;s sandbox decline this payment, to see what happens
+        </label>
+      )}
       {!ready && !unavailable && <p className="muted">Loading PayPal.</p>}
       {working && <p className="muted">Placing your hold.</p>}
       {unavailable && <p className="warn">PayPal is not available right now. A vouch is free and does not need PayPal.</p>}

@@ -16,6 +16,7 @@ export interface GitHub {
   comment(owner: string, repo: string, number: number, body: string): Promise<number>;
   createCheck(owner: string, repo: string, sha: string, state: CheckState): Promise<number>;
   updateCheck(owner: string, repo: string, id: number, state: CheckState): Promise<void>;
+  closePullRequest(owner: string, repo: string, number: number): Promise<void>;
   prFacts(owner: string, repo: string, number: number, login: string): Promise<OpenTimeFacts>;
 }
 
@@ -98,6 +99,9 @@ export function githubFor(installationId: number): GitHub {
     },
     async updateCheck(owner, repo, id, state) {
       await json('PATCH', `/repos/${owner}/${repo}/check-runs/${id}`, checkBody(state));
+    },
+    async closePullRequest(owner, repo, number) {
+      await json('PATCH', `/repos/${owner}/${repo}/pulls/${number}`, { state: 'closed' });
     },
     async prFacts(owner, repo, number, login) {
       const pr = await json<{ title: string; body: string | null }>('GET', `/repos/${owner}/${repo}/pulls/${number}`);
