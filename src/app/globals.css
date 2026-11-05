@@ -386,15 +386,18 @@ button.button:disabled {
 
 /* Hold page */
 .page {
-  max-width: 44rem;
   padding-block: 1.5rem 3rem;
+}
+
+.page > * {
+  max-width: 44rem;
 }
 
 .page h1 {
   font-size: clamp(1.9rem, 4.4vw, 2.8rem);
 }
 
-.page.wide {
+.page.wide > * {
   max-width: none;
 }
 
