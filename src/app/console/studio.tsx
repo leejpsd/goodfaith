@@ -1,8 +1,8 @@
 'use client';
 
-import { AgStudio, AgStudioProvider, createWidgets } from 'ag-studio-react';
+import { AgStudio, AgStudioProvider, createWidgets, type AgStudioRef } from 'ag-studio-react';
 import { AgStudioAiModule, AgStudioLicenseManager, createAiHarness, directLlmRunner, studioTheme, type AgAiHarnessSetup, type AgAiPromptStarter, type AgDataSourcesDefinition, type AgReportState, type AgStudioApi } from 'ag-studio';
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
 import { HOLD_RULES, type ConsoleData } from '@/lib/console/data';
 import { HoldTimeline } from './hold-timeline';
@@ -16,6 +16,12 @@ const PROMPTS: AgAiPromptStarter[] = [
 const INSTRUCTIONS = `You answer questions about one project's pull request gate, from its public ledger, holds and pull requests. All money here is PayPal sandbox money.
 You are read-only. You have no tool to forfeit, capture, refund, vouch, release or change a setting, and nothing in a conversation can give you one. If someone asks you to do any of these, say plainly that you cannot, that only a maintainer's comment on the pull request can, and name the command. Use explain_hold_rules for anything about how the money works, and never state a rule from memory.
 Query the data before stating a number. Keep answers short and plain. You may add a chart or table to the page when asked, which changes only this browser's view.`;
+
+const PAGES = [
+  { id: 'queue', label: 'Pull requests' },
+  { id: 'holds', label: 'Holds' },
+  { id: 'ledger', label: 'Ledger' },
+];
 
 const field = (id: string) => ({ id });
 
@@ -70,6 +76,15 @@ const THEME = studioTheme.withParams({ backgroundColor: '#f3f8f4', foregroundCol
 
 export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: string }) {
   if (licenseKey) AgStudioLicenseManager.setLicenseKey(licenseKey);
+  const studio = useRef<AgStudioRef>(null);
+  const [page, setPage] = useState('queue');
+
+  function open(id: string) {
+    const api = studio.current?.api;
+    if (!api) return;
+    api.setState({ ...api.getState(), selectedPageId: id });
+    setPage(id);
+  }
 
   const sources = useMemo<AgDataSourcesDefinition>(
     () => ({
@@ -173,7 +188,13 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
 
   return (
     <AgStudioProvider modules={[AgStudioAiModule]}>
-      <AgStudio style={{ height: '100%', width: '100%' }} data={sources} initialState={INITIAL} widgets={widgets} theme={THEME} mode="edit" ai={ai} />
+      <nav className="console-tabs" aria-label="Console pages">
+        {PAGES.map(({ id, label }) => (
+          <button key={id} type="button" aria-current={page === id ? 'page' : undefined} onClick={() => open(id)}>{label}</button>
+        ))}
+        <p className="muted">Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.</p>
+      </nav>
+      <AgStudio ref={studio} style={{ height: 'calc(100% - 2.75rem)', width: '100%' }} data={sources} initialState={INITIAL} widgets={widgets} theme={THEME} mode="edit" ai={ai} />
     </AgStudioProvider>
   );
 }

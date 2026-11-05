@@ -358,6 +358,36 @@ main.console {
   padding: 0;
 }
 
+.console-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0 1rem;
+  min-height: 2.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.console-tabs button {
+  padding: 0.3rem 0.7rem;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.console-tabs button[aria-current='page'] {
+  border-bottom-color: var(--ink);
+  font-weight: 600;
+}
+
+.console-tabs p {
+  margin: 0 0 0 auto;
+  font-size: 0.85rem;
+}
+
 .timeline {
   height: 100%;
   overflow: auto;
