@@ -3,6 +3,7 @@
 // pull request cannot smuggle one in through quoted text.
 export type Command =
   | { name: 'vouch'; target?: string }
+  | { name: 'unvouch'; target?: string }
   | { name: 'forfeit'; reason: string }
   | { name: 'appeal'; reason: string }
   | { name: 'release' }
@@ -27,10 +28,11 @@ export function parseCommand(body: string): ParseResult {
     const name = (match[1] ?? '').toLowerCase();
     const rest = (match[2] ?? '').trim();
     switch (name) {
-      case 'vouch': {
-        if (!rest) return { name: 'vouch' };
+      case 'vouch':
+      case 'unvouch': {
+        if (!rest) return { name };
         const handle = rest.match(HANDLE);
-        return handle ? { name: 'vouch', target: handle[1] } : { name: 'invalid', command: 'vouch', problem: 'bad_target' };
+        return handle ? { name, target: handle[1] } : { name: 'invalid', command: name, problem: 'bad_target' };
       }
       case 'forfeit':
       case 'appeal':

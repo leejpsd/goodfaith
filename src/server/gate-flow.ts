@@ -4,7 +4,7 @@ import { mayUse, parseCommand, type Command } from '@/lib/commands';
 import { chooseDoor } from '@/lib/gate';
 import type { CheckState } from '@/lib/github/client';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
-import { CHECK, closedDoorComment, gateComment, invalidCommandComment, onlyMaintainersComment, vouchedComment } from '@/lib/messages';
+import { CHECK, closedDoorComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment } from '@/lib/messages';
 import { listStatus, parseVouchList } from '@/lib/vouch';
 import type { Deps, HoldDeps } from './deps';
 import { onHoldCommand, releaseForReview, releaseForVouch, type Scope } from './hold-flow';
@@ -136,6 +136,15 @@ async function runCommand(deps: Deps, row: Scope, command: Command, actor: strin
   const isHoldOwner = actor.toLowerCase() === row.pr.authorLogin.toLowerCase();
   if (!mayUse(command, { isMaintainer, isHoldOwner })) {
     await deps.github.comment(owner, repo, number, onlyMaintainersComment(actor));
+    return;
+  }
+  if (command.name === 'unvouch') {
+    const target = command.target ?? row.pr.authorLogin;
+    const removed = await deps.db
+      .delete(vouches)
+      .where(and(eq(vouches.projectId, row.project.id), eq(vouches.login, target.toLowerCase())))
+      .returning();
+    await deps.github.comment(owner, repo, number, unvouchedComment(target, actor, removed.length > 0));
     return;
   }
   if (command.name !== 'vouch') {

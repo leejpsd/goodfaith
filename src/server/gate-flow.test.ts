@@ -186,6 +186,32 @@ describe('a maintainer vouches', () => {
   });
 });
 
+describe('a maintainer removes a vouch', () => {
+  it('sends the next pull request through the gate and leaves this one in review', async () => {
+    await onPullRequest(deps, prEvent());
+    await onIssueComment(deps, commentEvent('!vouch'));
+    await onIssueComment(deps, commentEvent('!unvouch'));
+    expect(github.comments.at(-1)).toContain('removed the vouch');
+    expect((await prRow()).status).toBe('in_review');
+
+    await onPullRequest(deps, prEvent({ number: 2 }));
+    expect((await prRow(2)).status).toBe('waiting');
+  });
+
+  it('refuses anyone without write access', async () => {
+    await onPullRequest(deps, prEvent());
+    await onIssueComment(deps, commentEvent('!vouch'));
+    await onIssueComment(deps, commentEvent('!unvouch', 'new-person'));
+    expect(github.comments.at(-1)).toContain('only a maintainer');
+  });
+
+  it('says so when there is nothing to remove', async () => {
+    await onPullRequest(deps, prEvent());
+    await onIssueComment(deps, commentEvent('!unvouch someone-else'));
+    expect(github.comments.at(-1)).toContain('no vouch');
+  });
+});
+
 describe('who may not vouch', () => {
   it('refuses the author vouching for themselves', async () => {
     await onPullRequest(deps, prEvent());

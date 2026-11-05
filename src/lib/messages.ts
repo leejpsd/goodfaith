@@ -14,6 +14,11 @@ export function gateComment(input: { login: string; holdUrl: string; minCents: n
 export const vouchedComment = (login: string, by: string) =>
   `@${by} vouched for @${login}. This pull request is in the review queue, and no money was involved.`;
 
+export const unvouchedComment = (login: string, by: string, found: boolean) =>
+  found
+    ? `@${by} removed the vouch for @${login}. Their next pull request goes through the gate, and this one stays where it is.`
+    : `@${by}, @${login} has no vouch here to remove.`;
+
 export const closedDoorComment = (login: string) =>
   `@${login} is on this project's denounced list, so this pull request will not enter review. A hold cannot change that. A maintainer can decide otherwise.`;
 

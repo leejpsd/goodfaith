@@ -54,4 +54,10 @@ describe('mayUse', () => {
     expect(mayUse({ name: 'appeal', reason: 'x' }, owner)).toBe(true);
     expect(mayUse({ name: 'appeal', reason: 'x' }, stranger)).toBe(false);
   });
+
+  it('reads !unvouch with and without a handle', () => {
+    expect(parseCommand('!unvouch')).toEqual({ name: 'unvouch' });
+    expect(parseCommand('!unvouch @someone')).toEqual({ name: 'unvouch', target: 'someone' });
+    expect(parseCommand('!unvouch not a handle')).toEqual({ name: 'invalid', command: 'unvouch', problem: 'bad_target' });
+  });
 });

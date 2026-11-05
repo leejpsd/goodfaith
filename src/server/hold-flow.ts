@@ -191,7 +191,7 @@ export const releaseForReview = (deps: HoldDeps, scope: Scope, actor: string | n
 export const releaseForVouch = (deps: HoldDeps, scope: Scope, actor: string) =>
   release(deps, scope, { type: 'vouched' }, actor, `@${actor} vouched for you`, 'vouched after the hold');
 
-export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclude<Command, { name: 'vouch' }>, actor: string): Promise<void> {
+export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclude<Command, { name: 'vouch' | 'unvouch' }>, actor: string): Promise<void> {
   const row = await holdOf(deps, scope.pr.id);
   const hold = row && toHold(row);
   if (!row || !hold) {
