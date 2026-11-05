@@ -28,10 +28,12 @@ const STATE: Record<string, string> = {
   refunded: 'Refunded',
 };
 
+// Studio hands date fields back as dates or strings, depending on the field's format.
+const toIso = (value: unknown) => (value === null || value === undefined || value === '' ? null : new Date(value as string).toISOString());
 const dayOf = (iso: string, placedAt: string) => (Date.parse(iso) - Date.parse(placedAt)) / DAY;
 const at = (days: number) => `${Math.min(Math.max(days / LAST_DAY, 0), 1) * 100}%`;
 
-type MappedField = { id: string };
+type MappedField = { id: string; key: string };
 
 // Studio passes more than this, and these are the parts the widget reads.
 interface TimelineParams {
@@ -54,15 +56,15 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
       .getData({ kind: 'flat', fields: mapped }, { queryId: 'holds' })
       .then((response) => {
         if (!live || response.replaced) return;
-        const read = (row: Record<string, unknown>, name: (typeof TIMELINE_FIELDS)[number]) => row[dataMapping[name]?.[0]?.id ?? name];
+        const read = (row: Record<string, unknown>, name: (typeof TIMELINE_FIELDS)[number]) => row[dataMapping[name]?.[0]?.key ?? name];
         setRows(
           (response.results?.rows ?? []).map((row) => ({
             pr: Number(read(row, 'pr')),
             state: String(read(row, 'state')),
             amount: Number(read(row, 'amount')),
-            placedAt: String(read(row, 'placedAt')),
-            appealEndsAt: (read(row, 'appealEndsAt') as string | null) ?? null,
-            capturedAt: (read(row, 'capturedAt') as string | null) ?? null,
+            placedAt: toIso(read(row, 'placedAt')) ?? '',
+            appealEndsAt: toIso(read(row, 'appealEndsAt')),
+            capturedAt: toIso(read(row, 'capturedAt')),
           })),
         );
       });
