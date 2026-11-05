@@ -1,0 +1,30 @@
+# Paid plans on purpose. A free database expires after 30 days, before judging ends,
+# and a free web service sleeps after 15 minutes, which would drop webhooks.
+services:
+  - type: web
+    name: goodfaith
+    runtime: node
+    region: oregon
+    plan: 0.5c-512mb
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: node scripts/migrate.mjs
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goodfaith-db
+          property: connectionString
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-6.1-sol
+
+databases:
+  - name: goodfaith-db
+    plan: 0.1c-256mb
+    region: oregon
