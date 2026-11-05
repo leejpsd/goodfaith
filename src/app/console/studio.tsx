@@ -50,7 +50,7 @@ const INITIAL: AgReportState = {
       name: 'Holds',
       widgets: {
         timeline: { type: 'hold-timeline', dataMapping: Object.fromEntries(TIMELINE_FIELDS.map((name) => [name, [field(`holds.${name}`)]])) },
-        list: { type: 'grid', dataMapping: { cols: ['holds.pr', 'holds.state', 'holds.amount', 'holds.placedAt', 'holds.honorEndsAt', 'holds.appealEndsAt', 'holds.capturedAt', 'holds.releaseBy'].map(field) } },
+        list: { type: 'grid', dataMapping: { cols: ['holds.pr', 'holds.state', 'holds.amount', 'holds.placed', 'holds.honorEnds', 'holds.appealEnds', 'holds.captured', 'holds.releaseBy'].map(field) } },
       },
       widgetLayout: {
         timeline: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 16 },
@@ -99,7 +99,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             { id: 'status', name: 'Status', format: 'textFormat' },
             { id: 'door', name: 'Door', format: 'textFormat' },
             { id: 'band', name: 'AI band', format: 'textFormat' },
-            { id: 'openedAt', name: 'Opened', format: 'dateFormat' },
+            { id: 'openedAt', name: 'Opened', format: 'textFormat' },
           ],
         },
         {
@@ -110,11 +110,14 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             { id: 'pr', name: 'Pull request', format: 'integerFormat' },
             { id: 'state', name: 'State', format: 'textFormat' },
             { id: 'amount', name: 'Amount', format: 'currencyFormat' },
-            { id: 'placedAt', name: 'Placed', format: 'dateTimeFormat' },
-            { id: 'honorEndsAt', name: 'Honor period ends', format: 'dateTimeFormat' },
-            { id: 'appealEndsAt', name: 'Appeal ends', format: 'dateTimeFormat' },
-            { id: 'capturedAt', name: 'Captured', format: 'dateTimeFormat' },
-            { id: 'releaseBy', name: 'Released by', format: 'dateTimeFormat' },
+            { id: 'placedAt', name: 'Placed, exact', format: 'textFormat' },
+            { id: 'appealEndsAt', name: 'Appeal ends, exact', format: 'textFormat' },
+            { id: 'capturedAt', name: 'Captured, exact', format: 'textFormat' },
+            { id: 'placed', name: 'Placed', format: 'textFormat' },
+            { id: 'honorEnds', name: 'Honor period ends', format: 'textFormat' },
+            { id: 'appealEnds', name: 'Appeal ends', format: 'textFormat' },
+            { id: 'captured', name: 'Captured', format: 'textFormat' },
+            { id: 'releaseBy', name: 'Released by', format: 'textFormat' },
           ],
         },
         {
@@ -122,7 +125,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           name: 'Ledger',
           data: data.ledger,
           fields: [
-            { id: 'at', name: 'Date', format: 'dateFormat' },
+            { id: 'at', name: 'Date', format: 'textFormat' },
             { id: 'event', name: 'Event', format: 'textFormat' },
             { id: 'amount', name: 'Amount', format: 'currencyFormat' },
             { id: 'pr', name: 'Pull request', format: 'integerFormat' },

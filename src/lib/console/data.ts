@@ -16,10 +16,15 @@ export interface HoldRow {
   pr: number;
   state: string;
   amount: number;
+  // Exact times, which the timeline widget reads.
   placedAt: string;
-  honorEndsAt: string;
   appealEndsAt: string | null;
   capturedAt: string | null;
+  // The same dates for reading in a table, in one format whatever the viewer's locale.
+  placed: string;
+  honorEnds: string;
+  appealEnds: string;
+  captured: string;
   releaseBy: string;
 }
 
@@ -41,6 +46,7 @@ export interface ConsoleData {
 }
 
 const iso = (date: Date | null | undefined) => (date ? date.toISOString() : null);
+const readable = (date: Date | string | null | undefined) => (date ? `${new Date(date).toISOString().slice(0, 16).replace('T', ' ')} UTC` : 'none');
 
 // The two dates that matter for a hold, from the same constants the money rules use.
 export function holdDates(placedAt: Date) {
@@ -52,14 +58,19 @@ export function holdDates(placedAt: Date) {
 
 export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: number): HoldRow | null {
   if (!hold.authorizedAt) return null;
+  const { honorEndsAt, releaseBy } = holdDates(hold.authorizedAt);
   return {
     pr,
     state: hold.state,
     amount: hold.cents / 100,
     placedAt: hold.authorizedAt.toISOString(),
-    ...holdDates(hold.authorizedAt),
     appealEndsAt: iso(hold.appealEndsAt),
     capturedAt: iso(hold.capturedAt),
+    placed: readable(hold.authorizedAt),
+    honorEnds: readable(honorEndsAt),
+    appealEnds: readable(hold.appealEndsAt),
+    captured: readable(hold.capturedAt),
+    releaseBy: readable(releaseBy),
   };
 }
 

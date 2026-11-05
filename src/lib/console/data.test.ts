@@ -16,7 +16,7 @@ describe('toHoldRow', () => {
 
   it('reports dollars and dates', () => {
     const row = toHoldRow({ state: 'held', cents: 2500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null }, 7);
-    expect(row).toMatchObject({ pr: 7, amount: 25, state: 'held', appealEndsAt: null });
+    expect(row).toMatchObject({ pr: 7, amount: 25, state: 'held', appealEndsAt: null, placed: '2026-11-01 00:00 UTC', appealEnds: 'none', releaseBy: '2026-11-29 00:00 UTC' });
   });
 });
 
