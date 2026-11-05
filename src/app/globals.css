@@ -513,6 +513,40 @@ main.console {
   background: #8a3b12;
 }
 
+/* Replay */
+.replay-form label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.replay-form div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.replay-form input {
+  flex: 1 1 16rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  color: inherit;
+  font: 1rem var(--typed);
+}
+
+button.link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
 /* Try page */
 .choices {
   display: grid;

@@ -1,6 +1,7 @@
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { DoorDecision, AuthorAssociation } from '@/lib/gate';
 import type { HoldState } from '@/lib/hold';
+import type { ReplayResult } from '@/lib/replay/replay';
 import type { Triage } from '@/lib/triage/triage';
 
 const id = () => uuid('id').primaryKey().defaultRandom();
@@ -109,6 +110,16 @@ export const ledgerEvents = pgTable(
   },
   (t) => [index('ledger_events_created_at').on(t.createdAt)],
 );
+
+// A read-only look at a public repository. Nothing here came from that project's maintainers,
+// and the stored result has no usernames in it.
+export const replays = pgTable('replays', {
+  repo: text('repo').primaryKey(),
+  status: text('status').$type<'running' | 'done' | 'failed'>().notNull(),
+  result: jsonb('result').$type<ReplayResult>(),
+  createdAt: createdAt(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 // A delivery seen twice does nothing the second time, because both senders retry.
 export const webhookDeliveries = pgTable(

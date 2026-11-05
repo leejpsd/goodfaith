@@ -49,7 +49,7 @@ export default async function Home() {
           </p>
           <div className="actions">
             <Link className="button primary" href="/try">Try it, with no login</Link>
-            <Link className="button" href="/ledger">Read the public ledger</Link>
+            <Link className="button" href="/replay">Replay a public repository</Link>
           </div>
         </div>
         {release && (
