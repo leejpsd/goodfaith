@@ -21,7 +21,7 @@ const field = (id: string) => ({ id });
 
 const INITIAL: AgReportState = {
   selectedPageId: 'queue',
-  panels: { filters: { collapsed: true }, data: { collapsed: true } },
+  panels: { filters: { collapsed: true }, data: { collapsed: true }, edit: { collapsed: true } },
   pages: [
     {
       id: 'queue',
@@ -74,9 +74,49 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
   const sources = useMemo<AgDataSourcesDefinition>(
     () => ({
       sources: [
-        { id: 'pulls', data: data.pulls },
-        { id: 'holds', data: data.holds },
-        { id: 'ledger', data: data.ledger },
+        {
+          id: 'pulls',
+          name: 'Pull requests',
+          data: data.pulls,
+          fields: [
+            { id: 'number', name: 'Pull request', format: 'integerFormat' },
+            { id: 'title', name: 'Title', format: 'textFormat' },
+            { id: 'status', name: 'Status', format: 'textFormat' },
+            { id: 'door', name: 'Door', format: 'textFormat' },
+            { id: 'band', name: 'AI band', format: 'textFormat' },
+            { id: 'openedAt', name: 'Opened', format: 'textFormat' },
+          ],
+        },
+        {
+          id: 'holds',
+          name: 'Holds',
+          data: data.holds,
+          fields: [
+            { id: 'pr', name: 'Pull request', format: 'integerFormat' },
+            { id: 'state', name: 'State', format: 'textFormat' },
+            { id: 'amount', name: 'Amount', format: 'currencyFormat' },
+            { id: 'placedAt', name: 'Placed', format: 'textFormat' },
+            { id: 'honorEndsAt', name: 'Honor period ends', format: 'textFormat' },
+            { id: 'appealEndsAt', name: 'Appeal ends', format: 'textFormat' },
+            { id: 'capturedAt', name: 'Captured', format: 'textFormat' },
+            { id: 'releaseBy', name: 'Released by', format: 'textFormat' },
+          ],
+        },
+        {
+          id: 'ledger',
+          name: 'Ledger',
+          data: data.ledger,
+          fields: [
+            { id: 'at', name: 'Date', format: 'textFormat' },
+            { id: 'event', name: 'Event', format: 'textFormat' },
+            { id: 'amount', name: 'Amount', format: 'currencyFormat' },
+            { id: 'pr', name: 'Pull request', format: 'integerFormat' },
+            { id: 'by', name: 'By', format: 'textFormat' },
+            { id: 'reason', name: 'Reason', format: 'textFormat' },
+            { id: 'paypalId', name: 'PayPal ID', format: 'textFormat' },
+            { id: 'confirmed', name: 'PayPal webhook', format: 'textFormat' },
+          ],
+        },
       ],
       relationships: [
         { id: 'holds-pulls', source: 'holds.pr', target: 'pulls.number', type: 'many-to-one' },
