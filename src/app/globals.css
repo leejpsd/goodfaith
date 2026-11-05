@@ -660,3 +660,16 @@ paypal-button {
     transform: none;
   }
 }
+
+.cases {
+  display: grid;
+  gap: 2.5rem;
+}
+
+.cases h3 {
+  margin-bottom: 0.25rem;
+}
+
+.cases p {
+  max-width: 44rem;
+}

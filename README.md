@@ -2,6 +2,7 @@
 
 A stranger's pull request reaches review in one of two ways: a maintainer vouches for them for free, or they place a refundable PayPal hold that a good-faith review releases. Only a maintainer's command can capture the money. No model can.
 
+- **For judges, five finished cases and what to look for:** https://goodfaith.onrender.com/judges
 - **Try it, with no login:** https://goodfaith.onrender.com/try opens a real pull request from a test account, and you play both sides
 - **Maintainer console, on AG Studio:** https://goodfaith.onrender.com/console
 - **Public ledger:** https://goodfaith.onrender.com/ledger
@@ -33,7 +34,7 @@ Economists proposed this for email in 2004: [an unknown sender escrows a pledge,
 
 The vouch comes first everywhere: in the bot's comment, on the hold page and in this file. A denounced author is not offered a hold, because money does not buy back a ban. A vouch that arrives after a hold releases the hold.
 
-**Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first. We recommend sending forfeits to a charity or a foundation through `payout_receiver`, so nobody profits from rejecting someone.
+**Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first. We recommend sending forfeits to a charity or a foundation through `payout_receiver`, so a maintainer gains nothing by rejecting someone.
 
 **It reaches across projects.** GitHub says its own pull request cap ["does nothing when someone opens pull requests across hundreds of repositories at once"](https://github.blog/open-source/maintainers/how-pull-request-limits-are-cutting-down-the-noise/). A hold ties up real funds, and one PayPal account can have at most 5 open across every project using Goodfaith. In our data, 43% of labelled pull requests came from authors labelled more than once.
 

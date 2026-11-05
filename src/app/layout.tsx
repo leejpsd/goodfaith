@@ -20,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header className="site-head">
           <Link className="wordmark" href="/">Goodfaith</Link>
           <nav aria-label="Main">
+            <Link href="/judges">For judges</Link>
             <Link href="/try">Try it</Link>
             <Link href="/replay">Replay a repo</Link>
             <Link href="/console">Console</Link>
