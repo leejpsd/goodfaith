@@ -5,7 +5,7 @@ import { AgStudioAiModule, AgStudioLicenseManager, createAiHarness, directLlmRun
 import { useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
 import { HOLD_RULES, type ConsoleData } from '@/lib/console/data';
-import { HoldTimeline } from './hold-timeline';
+import { HoldTimeline, TIMELINE_FIELDS } from './hold-timeline';
 
 const PROMPTS: AgAiPromptStarter[] = [
   { label: 'Explain a forfeit', prompt: 'How does a forfeit work, and who can start one?' },
@@ -49,7 +49,7 @@ const INITIAL: AgReportState = {
       id: 'holds',
       name: 'Holds',
       widgets: {
-        timeline: { type: 'hold-timeline', dataMapping: {} },
+        timeline: { type: 'hold-timeline', dataMapping: Object.fromEntries(TIMELINE_FIELDS.map((name) => [name, [field(`holds.${name}`)]])) },
         list: { type: 'grid', dataMapping: { cols: ['holds.pr', 'holds.state', 'holds.amount', 'holds.placedAt', 'holds.honorEndsAt', 'holds.appealEndsAt', 'holds.capturedAt', 'holds.releaseBy'].map(field) } },
       },
       widgetLayout: {
@@ -149,7 +149,8 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             id: 'hold-timeline',
             label: 'Hold timeline',
             comp: HoldTimeline,
-            form: (params: { createDefaults(options: { dataMappingItems: unknown[] }): unknown }) => params.createDefaults({ dataMappingItems: [] }),
+            dataMapping: Object.fromEntries(TIMELINE_FIELDS.map((name) => [name, { type: 'field', requires: { cardinality: 'one' }, required: true }])),
+            form: (params: { createDefaults(options: { dataMappingItems: unknown[] }): unknown }) => params.createDefaults({ dataMappingItems: TIMELINE_FIELDS.map((key) => ({ key, label: key })) }),
             defaultSize: { width: 900, height: 400 },
             minSize: { width: 320, height: 200 },
             ai: { description: 'One row per hold, showing the honor period, the appeal window and the day a forgotten hold is released.' },

@@ -16,7 +16,7 @@ interface HoldPoint {
   capturedAt: string | null;
 }
 
-const FIELDS = ['pr', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt'] as const;
+export const TIMELINE_FIELDS = ['pr', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt'] as const;
 const OPEN = new Set(['held', 'forfeit_pending', 'appealed']);
 const STATE: Record<string, string> = {
   held: 'In place',
@@ -31,8 +31,11 @@ const STATE: Record<string, string> = {
 const dayOf = (iso: string, placedAt: string) => (Date.parse(iso) - Date.parse(placedAt)) / DAY;
 const at = (days: number) => `${Math.min(Math.max(days / LAST_DAY, 0), 1) * 100}%`;
 
+type MappedField = { id: string };
+
 // Studio passes more than this, and these are the parts the widget reads.
 interface TimelineParams {
+  dataMapping: Partial<Record<(typeof TIMELINE_FIELDS)[number], MappedField[]>>;
   widgetApi: {
     getData(request: unknown, options?: { queryId?: string }): Promise<{ replaced?: boolean; results?: { rows?: Record<string, unknown>[] } }>;
   };
@@ -40,16 +43,18 @@ interface TimelineParams {
 
 // One row per hold, on the same 28-day ruler: PayPal's honor period, the appeal window, and the
 // day a forgotten hold is released. The custom widget this project adds to AG Studio.
-export function HoldTimeline({ widgetApi }: TimelineParams) {
+export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
   const [rows, setRows] = useState<HoldPoint[] | null>(null);
 
   useEffect(() => {
     let live = true;
+    const mapped = TIMELINE_FIELDS.flatMap((name) => dataMapping[name]?.slice(0, 1) ?? []);
+    if (mapped.length < TIMELINE_FIELDS.length) return;
     void widgetApi
-      .getData({ kind: 'flat', fields: FIELDS.map((field) => ({ id: `holds.${field}` })) }, { queryId: 'holds' })
+      .getData({ kind: 'flat', fields: mapped }, { queryId: 'holds' })
       .then((response) => {
         if (!live || response.replaced) return;
-        const read = (row: Record<string, unknown>, field: string) => row[`holds.${field}`] ?? row[field];
+        const read = (row: Record<string, unknown>, name: (typeof TIMELINE_FIELDS)[number]) => row[dataMapping[name]?.[0]?.id ?? name];
         setRows(
           (response.results?.rows ?? []).map((row) => ({
             pr: Number(read(row, 'pr')),
@@ -64,7 +69,7 @@ export function HoldTimeline({ widgetApi }: TimelineParams) {
     return () => {
       live = false;
     };
-  }, [widgetApi]);
+  }, [widgetApi, dataMapping]);
 
   if (!rows) return <AgLoadingOverlay />;
   if (rows.length === 0) return <AgNoDataOverlay />;
