@@ -192,10 +192,10 @@ describe('a maintainer removes a vouch', () => {
     await onIssueComment(deps, commentEvent('!vouch'));
     await onIssueComment(deps, commentEvent('!unvouch'));
     expect(github.comments.at(-1)).toContain('removed the vouch');
-    expect((await prRow()).status).toBe('in_review');
+    expect((await prRow())?.status).toBe('in_review');
 
     await onPullRequest(deps, prEvent({ number: 2 }));
-    expect((await prRow(2)).status).toBe('waiting');
+    expect((await prRow(2))?.status).toBe('waiting');
   });
 
   it('refuses anyone without write access', async () => {
