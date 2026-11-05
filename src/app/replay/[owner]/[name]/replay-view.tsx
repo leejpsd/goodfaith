@@ -50,8 +50,11 @@ export function ReplayView({ owner, name }: { owner: string; name: string }) {
         A read-only replay. <strong>This project has not installed Goodfaith and knows nothing about it.</strong> It uses the demo&apos;s $2, $5 and $25 amounts, read only what was public when each pull request opened, and judges no person. {result.model ? `Model: ${result.model}.` : ''}
       </p>
       <section className="card">
-        <h2>Of the last {result.looked} pull requests, {s.strangers} came from people new to this project.</h2>
-        <p>Those {s.strangers} would have waited for a free vouch or a refundable hold, and the rest would have gone straight to review.</p>
+        <h2>Of the last {result.looked} pull requests, {result.strangersFound >= 50 ? 'at least 50' : result.strangersFound} came from people new to this project.</h2>
+        <p>Those would have waited for a free vouch or a refundable hold, and the rest would have gone straight to review.{result.strangersFound > s.strangers ? ` This shows the latest ${s.strangers}.` : ''}</p>
+        {s.open > 0 && s.oldestOpenDays !== null && (
+          <p><strong>{s.open} of these {s.strangers} are still open,</strong> the oldest for {s.oldestOpenDays} days.</p>
+        )}
         {s.merged > 0 && (
           <p><strong>{s.merged} of them were merged.</strong> They would have held {money(s.meanMergedCents)} on average, and {s.mergedAtMost} would have been asked for the maximum, all of it released at review.</p>
         )}

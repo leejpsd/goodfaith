@@ -18,7 +18,7 @@ export type ReplayStart = { status: 'running' | 'done' } | { refused: 'not_found
 export async function startReplay(repo: string): Promise<ReplayStart> {
   const [existing] = await db().select().from(replays).where(eq(replays.repo, repo));
   const age = existing ? Date.now() - existing.updatedAt.getTime() : Infinity;
-  if (existing?.status === 'done' && age < KEEP_MS) return { status: 'done' };
+  if (existing?.status === 'done' && age < KEEP_MS && existing.result?.strangersFound !== undefined) return { status: 'done' };
   if (existing?.status === 'running' && age < STUCK_MS) return { status: 'running' };
 
   const [today] = await db().select({ count: sql<number>`count(*)::int` }).from(replays).where(gte(replays.updatedAt, new Date(Date.now() - 864e5)));
@@ -47,7 +47,8 @@ async function runReplay(repo: string): Promise<void> {
   const inRepo = (pull: ListedPull) => `repo:${repo} is:pr is:merged author:${pull.author} created:<${pull.createdAt.slice(0, 10)}`;
   const anywhere = (pull: ListedPull) => `is:pr is:merged author:${pull.author} merged:<${pull.createdAt.slice(0, 10)}`;
   const counts = await searchCounts([...new Set(outside.flatMap((pull) => [inRepo(pull), anywhere(pull)]))]);
-  const strangers = outside.filter((pull) => (counts.get(inRepo(pull)) ?? 0) === 0).slice(0, REPLAY_SIZE);
+  const allStrangers = outside.filter((pull) => (counts.get(inRepo(pull)) ?? 0) === 0);
+  const strangers = allStrangers.slice(0, REPLAY_SIZE);
 
   const rows: ReplayRow[] = [];
   let model: string | null = null;
@@ -64,6 +65,6 @@ async function runReplay(repo: string): Promise<void> {
     }),
   );
 
-  const result: ReplayResult = { repo, at: new Date().toISOString(), model, looked: pulls.length, known: pulls.length - strangers.length, rows: rows.sort((a, b) => b.number - a.number) };
+  const result: ReplayResult = { repo, at: new Date().toISOString(), model, looked: pulls.length, strangersFound: allStrangers.length, rows: rows.sort((a, b) => b.number - a.number) };
   await db().update(replays).set({ status: 'done', result, updatedAt: new Date() }).where(eq(replays.repo, repo));
 }

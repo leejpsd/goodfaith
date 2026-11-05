@@ -70,8 +70,8 @@ describe('summarize', () => {
   const row = (outcome: ReplayRow['outcome'], band: ReplayRow['band'], amountCents: number | null): ReplayRow => ({ number: 1, title: '', url: '', openedAt: '', outcome, band, amountCents, reason: null, brief: null, flagged: false });
 
   it('compares what merged and closed pull requests would have held', () => {
-    const s = summarize([row('merged', 'low', 200), row('merged', 'high', 2500), row('closed', 'high', 2500), row('closed', 'medium', 500), row('open', 'low', 200), row('closed', null, null)]);
-    expect(s).toEqual({ strangers: 6, merged: 2, mergedAtMost: 1, closed: 2, closedHigh: 1, meanMergedCents: 1350, meanClosedCents: 1500 });
+    const s = summarize([row('merged', 'low', 200), row('merged', 'high', 2500), row('closed', 'high', 2500), row('closed', 'medium', 500), { ...row('open', 'low', 200), openedAt: '2026-10-01' }, row('closed', null, null)], new Date('2026-10-11T00:00:00Z'));
+    expect(s).toEqual({ strangers: 6, open: 1, oldestOpenDays: 10, merged: 2, mergedAtMost: 1, closed: 2, closedHigh: 1, meanMergedCents: 1350, meanClosedCents: 1500 });
   });
 
   it('copes with nothing to average', () => {

@@ -36,7 +36,8 @@ export interface ReplayResult {
   at: string;
   model: string | null;
   looked: number;
-  known: number;
+  // How many of those came from people new to the project. `rows` shows the latest of them.
+  strangersFound: number;
   rows: ReplayRow[];
 }
 
@@ -84,6 +85,8 @@ export function readRepo(input: string): string | null {
 
 export interface ReplaySummary {
   strangers: number;
+  open: number;
+  oldestOpenDays: number | null;
   merged: number;
   mergedAtMost: number;
   closed: number;
@@ -94,12 +97,16 @@ export interface ReplaySummary {
 
 const mean = (values: number[]) => (values.length ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : null);
 
-export function summarize(rows: ReplayRow[]): ReplaySummary {
+export function summarize(rows: ReplayRow[], now = new Date()): ReplaySummary {
+  const open = rows.filter((row) => row.outcome === 'open');
+  const days = open.map((row) => Math.floor((now.getTime() - Date.parse(row.openedAt)) / 864e5));
   const sized = rows.filter((row) => row.amountCents !== null);
   const merged = sized.filter((row) => row.outcome === 'merged');
   const closed = sized.filter((row) => row.outcome === 'closed');
   return {
     strangers: rows.length,
+    open: open.length,
+    oldestOpenDays: days.length ? Math.max(...days) : null,
     merged: merged.length,
     mergedAtMost: merged.filter((row) => row.band === 'high').length,
     closed: closed.length,
