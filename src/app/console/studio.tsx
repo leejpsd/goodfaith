@@ -94,6 +94,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             id: 'hold-timeline',
             label: 'Hold timeline',
             comp: HoldTimeline,
+            form: (params: { createDefaults(options: { dataMappingItems: unknown[] }): unknown }) => params.createDefaults({ dataMappingItems: [] }),
             defaultSize: { width: 900, height: 400 },
             minSize: { width: 320, height: 200 },
             ai: { description: 'One row per hold, showing the honor period, the appeal window and the day a forgotten hold is released.' },
