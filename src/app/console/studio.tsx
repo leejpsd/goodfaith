@@ -1,6 +1,6 @@
 'use client';
 
-import { AgStudio, AgStudioProvider, createWidgets, type AgStudioRef } from 'ag-studio-react';
+import { AgStudio, AgStudioProvider, createWidgets } from 'ag-studio-react';
 import { AgStudioAiModule, AgStudioLicenseManager, createAiHarness, directLlmRunner, studioTheme, type AgAiHarnessSetup, type AgAiPromptStarter, type AgDataSourcesDefinition, type AgReportState, type AgStudioApi } from 'ag-studio';
 import { useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
@@ -76,11 +76,11 @@ const THEME = studioTheme.withParams({ backgroundColor: '#f3f8f4', foregroundCol
 
 export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: string }) {
   if (licenseKey) AgStudioLicenseManager.setLicenseKey(licenseKey);
-  const studio = useRef<AgStudioRef>(null);
+  const studio = useRef<AgStudioApi | null>(null);
   const [page, setPage] = useState('queue');
 
   function open(id: string) {
-    const api = studio.current?.api;
+    const api = studio.current;
     if (!api) return;
     api.setState({ ...api.getState(), selectedPageId: id });
     setPage(id);
@@ -194,7 +194,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
         ))}
         <p className="muted">Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.</p>
       </nav>
-      <AgStudio ref={studio} style={{ height: 'calc(100% - 2.75rem)', width: '100%' }} data={sources} initialState={INITIAL} widgets={widgets} theme={THEME} mode="edit" ai={ai} />
+      <AgStudio onApiReady={({ api }) => { studio.current = api as unknown as AgStudioApi; }} style={{ height: 'calc(100% - 2.75rem)', width: '100%' }} data={sources} initialState={INITIAL} widgets={widgets} theme={THEME} mode="edit" ai={ai} />
     </AgStudioProvider>
   );
 }
