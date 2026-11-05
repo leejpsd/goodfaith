@@ -7,14 +7,47 @@ export interface PullRow {
   title: string;
   url: string;
   status: string;
-  door: string;
+  // How the author got in, which is the whole idea of the product.
+  entry: string;
   band: string;
   openedAt: string;
 }
 
+const STATUS: Record<string, string> = { waiting: 'Waiting at the gate', in_review: 'In review', blocked: 'Denounced', merged: 'Merged', closed: 'Closed' };
+const BAND: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', none: 'No AI read' };
+
+export const statusLabel = (status: string) => STATUS[status] ?? status;
+export const bandLabel = (band: string) => BAND[band] ?? band;
+
+export function entryLabel(input: { door: string; status: string; held: boolean }): string {
+  if (input.door === 'known') return 'Known contributor';
+  if (input.door === 'closed') return 'Denounced';
+  if (input.held) return 'Refundable hold';
+  return input.status === 'waiting' ? 'Not yet' : 'Free vouch';
+}
+
+const HOLD_STATE: Record<string, string> = {
+  held: 'In place',
+  forfeit_pending: 'Forfeit pending',
+  appealed: 'Appealed',
+  captured: 'Captured',
+  paid_out: 'Paid out',
+  voided: 'Released',
+  refunded: 'Refunded',
+};
+
+export const holdStateLabel = (state: string) => HOLD_STATE[state] ?? state;
+
+// Only these events move money or reserve it. A forfeit or an appeal moves nothing, so summing
+// them with the rest would overstate what happened.
+const MONEY_EVENT: Partial<Record<string, string>> = { held: 'Held', voided: 'Released', captured: 'Captured', refunded: 'Refunded', paid_out: 'Paid out' };
+export const moneyEventLabel = (kind: string) => MONEY_EVENT[kind] ?? null;
+
 export interface HoldRow {
   pr: number;
   state: string;
+  // 1 while the hold is still reserved at PayPal, so a sum counts the open ones.
+  open: number;
   amount: number;
   // Exact times, which the timeline widget reads.
   placedAt: string;
@@ -39,10 +72,16 @@ export interface LedgerRow {
   at: string;
 }
 
+export interface MoneyRow {
+  outcome: string;
+  amount: number;
+}
+
 export interface ConsoleData {
   pulls: PullRow[];
   holds: HoldRow[];
   ledger: LedgerRow[];
+  money: MoneyRow[];
 }
 
 const iso = (date: Date | null | undefined) => (date ? date.toISOString() : null);
@@ -61,7 +100,8 @@ export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Da
   const { honorEndsAt, releaseBy } = holdDates(hold.authorizedAt);
   return {
     pr,
-    state: hold.state,
+    state: holdStateLabel(hold.state),
+    open: ['held', 'forfeit_pending', 'appealed'].includes(hold.state) ? 1 : 0,
     amount: hold.cents / 100,
     placedAt: hold.authorizedAt.toISOString(),
     appealEndsAt: iso(hold.appealEndsAt),

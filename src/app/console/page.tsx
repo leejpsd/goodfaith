@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { db } from '@/db/client';
 import { holds, ledgerEvents, pullRequests } from '@/db/schema';
-import { toHoldRow, type ConsoleData } from '@/lib/console/data';
+import { bandLabel, entryLabel, moneyEventLabel, statusLabel, toHoldRow, type ConsoleData } from '@/lib/console/data';
 import { ConsoleLoader } from './console-loader';
 
 export const dynamic = 'force-dynamic';
@@ -19,13 +19,13 @@ async function load(): Promise<ConsoleData> {
     .orderBy(desc(ledgerEvents.createdAt))
     .limit(2000);
   return {
-    pulls: rows.map(({ pr }) => ({
+    pulls: rows.map(({ pr, hold }) => ({
       number: pr.number,
       title: pr.title,
       url: pr.htmlUrl,
-      status: pr.status,
-      door: pr.door,
-      band: pr.triage?.band ?? 'none',
+      status: statusLabel(pr.status),
+      entry: entryLabel({ door: pr.door, status: pr.status, held: Boolean(hold?.authorizedAt) }),
+      band: bandLabel(pr.triage?.band ?? 'none'),
       openedAt: pr.createdAt.toISOString().slice(0, 10),
     })),
     holds: rows.flatMap(({ pr, hold }) => {
@@ -40,8 +40,12 @@ async function load(): Promise<ConsoleData> {
       reason: event.note ?? 'none',
       paypalId: event.paypalId ?? 'none',
       confirmed: event.reconciledAt ? 'confirmed' : 'not yet',
-      at: event.createdAt.toISOString().slice(0, 10),
+      at: event.createdAt.toISOString().slice(0, 16).replace('T', ' '),
     })),
+    money: events.flatMap(({ event }) => {
+      const outcome = moneyEventLabel(event.kind);
+      return outcome ? [{ outcome, amount: event.cents / 100 }] : [];
+    }),
   };
 }
 

@@ -17,16 +17,8 @@ interface HoldPoint {
 }
 
 export const TIMELINE_FIELDS = ['pr', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt'] as const;
-const OPEN = new Set(['held', 'forfeit_pending', 'appealed']);
-const STATE: Record<string, string> = {
-  held: 'In place',
-  forfeit_pending: 'Forfeit pending',
-  appealed: 'Appealed',
-  captured: 'Captured',
-  paid_out: 'Paid out',
-  voided: 'Released',
-  refunded: 'Refunded',
-};
+const ENDED = new Set(['Captured', 'Paid out', 'Released', 'Refunded']);
+const MARKS = [0, 7, 14, 21, 28];
 
 // Studio hands date fields back as dates or strings, depending on the field's format.
 const toIso = (value: unknown) => (value === null || value === undefined || value === '' ? null : new Date(value as string).toISOString());
@@ -83,23 +75,32 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
         <span><i className="swatch honor" /> Honor period, {HONOR_DAYS} days</span>
         <span><i className="swatch appeal" /> Appeal window</span>
         <span><i className="swatch age" /> Time held so far</span>
+        <span><i className="swatch pin-key" /> Captured</span>
         <span>Released by day {LAST_DAY} if nobody acts</span>
+      </div>
+      <div className="timeline-ruler" aria-hidden="true">
+        <span />
+        <div>{MARKS.map((day) => <span key={day} style={{ left: at(day) }}>Day {day}</span>)}</div>
       </div>
       <ul>
         {rows.map((hold) => {
           const age = dayOf(now, hold.placedAt);
+          const ended = ENDED.has(hold.state);
+          const appealEnd = hold.appealEndsAt ? dayOf(hold.appealEndsAt, hold.placedAt) : null;
           return (
-            <li key={hold.pr}>
+            <li key={hold.pr} className={ended ? 'ended' : undefined}>
               <div className="timeline-label">
-                <strong>#{hold.pr}</strong> ${hold.amount.toFixed(2)}, {STATE[hold.state] ?? hold.state}
+                <strong>#{hold.pr}</strong> ${hold.amount.toFixed(2)}, {hold.state}
               </div>
-              <div className="timeline-track" title={`Placed ${hold.placedAt}`}>
+              <div
+                className="timeline-track"
+                role="img"
+                aria-label={`Pull request ${hold.pr}: ${hold.state}. Placed ${hold.placedAt}.${hold.appealEndsAt ? ` Appeal window ends ${hold.appealEndsAt}.` : ''}${hold.capturedAt ? ` Captured ${hold.capturedAt}.` : ''}`}
+              >
                 <div className="segment honor" style={{ width: at(HONOR_DAYS) }} />
-                {OPEN.has(hold.state) && <div className="segment age" style={{ width: at(age) }} />}
-                {hold.appealEndsAt && (
-                  <div className="segment appeal" style={{ left: at(age), width: `calc(${at(dayOf(hold.appealEndsAt, hold.placedAt))} - ${at(age)})` }} />
-                )}
-                {hold.capturedAt && <div className="pin" style={{ left: at(dayOf(hold.capturedAt, hold.placedAt)) }} aria-label="Captured" />}
+                {!ended && <div className="segment age" style={{ width: at(age) }} />}
+                {!ended && appealEnd !== null && <div className="segment appeal" style={{ left: at(age), width: `calc(${at(appealEnd)} - ${at(age)})` }} />}
+                {hold.capturedAt && <div className="pin" style={{ left: at(dayOf(hold.capturedAt, hold.placedAt)) }} />}
               </div>
             </li>
           );

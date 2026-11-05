@@ -351,6 +351,15 @@ td.id {
 }
 
 /* Console */
+.console {
+  --ag-chart-palette-fills-1-color: #13304a;
+  --ag-chart-palette-strokes-1-color: #13304a;
+  --ag-chart-palette-fills-2-color: #5a2a8a;
+  --ag-chart-palette-strokes-2-color: #5a2a8a;
+  --ag-chart-palette-fills-3-color: #5f8571;
+  --ag-chart-palette-strokes-3-color: #5f8571;
+}
+
 main.console {
   width: 100%;
   height: calc(100vh - 4.5rem);
@@ -442,7 +451,48 @@ main.console {
 }
 
 .honor {
-  background: #9db5a6;
+  background: #5f8571;
+}
+
+.pin-key {
+  width: 3px;
+  background: #8a3b12;
+}
+
+.timeline-ruler {
+  display: grid;
+  grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #46596a;
+  font-size: 0.78rem;
+}
+
+.timeline-ruler > div {
+  position: relative;
+  height: 1.1rem;
+}
+
+.timeline-ruler > div span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.timeline-ruler > div span:first-child {
+  transform: none;
+}
+
+.timeline-ruler > div span:last-child {
+  transform: translateX(-100%);
+}
+
+.timeline li.ended .timeline-label {
+  color: #46596a;
+}
+
+.timeline li.ended .segment.honor {
+  opacity: 0.35;
 }
 
 .age {
