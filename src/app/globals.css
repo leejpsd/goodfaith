@@ -350,6 +350,89 @@ td.id {
   font-family: var(--typed);
 }
 
+/* Console */
+main.console {
+  width: 100%;
+  height: calc(100vh - 4.5rem);
+  min-height: 34rem;
+  padding: 0;
+}
+
+.timeline {
+  height: 100%;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.timeline-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin-bottom: 0.75rem;
+  color: #46596a;
+}
+
+.timeline ul {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.timeline-track {
+  position: relative;
+  height: 1rem;
+  background: #dfe9e2;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  vertical-align: -0.05rem;
+  border-radius: 2px;
+}
+
+.honor {
+  background: #9db5a6;
+}
+
+.age {
+  background: #13304a;
+  opacity: 0.35;
+}
+
+.appeal {
+  background: #5a2a8a;
+  opacity: 0.55;
+}
+
+.pin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #8a3b12;
+}
+
 /* Try page */
 .choices {
   display: grid;

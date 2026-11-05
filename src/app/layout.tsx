@@ -21,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Link className="wordmark" href="/">Goodfaith</Link>
           <nav aria-label="Main">
             <Link href="/try">Try it</Link>
+            <Link href="/console">Console</Link>
             <Link href="/ledger">Public ledger</Link>
             <a href="https://github.com/leejpsd/goodfaith-demo">Demo repository</a>
             <a href="https://github.com/leejpsd/goodfaith">Source</a>
