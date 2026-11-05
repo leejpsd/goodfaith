@@ -7,6 +7,7 @@ import { ledgerEvents, pullRequests, vouches } from '@/db/schema';
 import * as schema from '@/db/schema';
 import type { CheckState, GitHub, Permission } from '@/lib/github/client';
 import type { IssueCommentEvent, PullRequestEvent } from '@/lib/github/webhook';
+import type { PayPal } from '@/lib/paypal/client';
 import { onIssueComment, onPullRequest, type Deps } from './gate-flow';
 
 const db = drizzle(new PGlite(), { schema });
@@ -35,6 +36,20 @@ class FakeGitHub implements GitHub {
   };
 }
 
+// Nothing in this file has a hold, so no path here may reach PayPal.
+class UnusedPayPal implements PayPal {
+  private fail = async (): Promise<never> => {
+    throw new Error('PayPal must not be called here');
+  };
+  createOrder = this.fail;
+  authorizeOrder = this.fail;
+  voidAuthorization = this.fail;
+  reauthorize = this.fail;
+  capture = this.fail;
+  refund = this.fail;
+  verifyWebhook = this.fail;
+}
+
 let github: FakeGitHub;
 let deps: Deps;
 
@@ -44,7 +59,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   github = new FakeGitHub();
-  deps = { db, github, appUrl: 'https://app.test' };
+  deps = { db, github, paypal: new UnusedPayPal(), appUrl: 'https://app.test' };
   repo = `repo-${++repoCounter}`;
 });
 

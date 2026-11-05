@@ -15,12 +15,13 @@ export default async function LedgerPage() {
     .limit(200);
 
   return (
-    <main>
+    <main className="wide">
       <h1>Public ledger</h1>
       <p>Every vouch and every hold event. This demo uses PayPal sandbox money and test accounts.</p>
+      <div className="scroll">
       <table>
         <thead>
-          <tr><th>When</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>PayPal ID</th></tr>
+          <tr><th>When</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>PayPal ID</th><th>PayPal webhook</th></tr>
         </thead>
         <tbody>
           {rows.map(({ event, pr }) => (
@@ -31,10 +32,12 @@ export default async function LedgerPage() {
               <td><a href={pr.htmlUrl}>#{pr.number}</a></td>
               <td>{event.actor}</td>
               <td>{event.paypalId ?? 'none'}</td>
+              <td>{event.reconciledAt ? 'confirmed' : event.paypalId ? 'not yet' : 'none'}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

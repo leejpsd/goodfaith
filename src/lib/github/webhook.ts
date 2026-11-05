@@ -37,3 +37,12 @@ export const issueCommentEvent = z.object({
   comment: z.object({ body: z.string().nullable(), user }),
 });
 export type IssueCommentEvent = z.infer<typeof issueCommentEvent>;
+
+export const pullRequestReviewEvent = z.object({
+  action: z.string(),
+  installation,
+  repository: repo,
+  pull_request: z.object({ number: z.number() }),
+  review: z.object({ body: z.string().nullable(), user }),
+});
+export type PullRequestReviewEvent = z.infer<typeof pullRequestReviewEvent>;

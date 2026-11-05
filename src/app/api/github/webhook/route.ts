@@ -2,8 +2,10 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { webhookDeliveries } from '@/db/schema';
 import { githubFor } from '@/lib/github/client';
-import { issueCommentEvent, pullRequestEvent, verifySignature } from '@/lib/github/webhook';
-import { onIssueComment, onPullRequest } from '@/server/gate-flow';
+import { issueCommentEvent, pullRequestEvent, pullRequestReviewEvent, verifySignature } from '@/lib/github/webhook';
+import { paypalClient } from '@/lib/paypal/client';
+import { onIssueComment, onPullRequest, onPullRequestReview } from '@/server/gate-flow';
+import { appUrl } from '@/server/live';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,20 +19,23 @@ export async function POST(request: Request) {
   if (!delivery) return new Response('no delivery id', { status: 400 });
 
   const event = request.headers.get('x-github-event');
-  if (event !== 'pull_request' && event !== 'issue_comment') return Response.json({ ignored: event });
+  if (event !== 'pull_request' && event !== 'issue_comment' && event !== 'pull_request_review') return Response.json({ ignored: event });
 
   const fresh = await db().insert(webhookDeliveries).values({ source: 'github', deliveryId: delivery }).onConflictDoNothing().returning();
   if (!fresh.length) return Response.json({ duplicate: true });
 
   try {
     const body: unknown = JSON.parse(raw);
-    const appUrl = process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:3000';
+    const deps = (installationId: number) => ({ db: db(), github: githubFor(installationId), paypal: paypalClient(), appUrl: appUrl() });
     if (event === 'pull_request') {
       const parsed = pullRequestEvent.parse(body);
-      await onPullRequest({ db: db(), github: githubFor(parsed.installation.id), appUrl }, parsed);
+      await onPullRequest(deps(parsed.installation.id), parsed);
+    } else if (event === 'pull_request_review') {
+      const parsed = pullRequestReviewEvent.parse(body);
+      await onPullRequestReview(deps(parsed.installation.id), parsed);
     } else {
       const parsed = issueCommentEvent.parse(body);
-      await onIssueComment({ db: db(), github: githubFor(parsed.installation.id), appUrl }, parsed);
+      await onIssueComment(deps(parsed.installation.id), parsed);
     }
     return Response.json({ ok: true });
   } catch (error) {
