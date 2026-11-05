@@ -149,7 +149,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             id: 'hold-timeline',
             label: 'Hold timeline',
             comp: HoldTimeline,
-            dataMapping: Object.fromEntries(TIMELINE_FIELDS.map((name) => [name, { type: 'field', requires: { cardinality: 'one' }, required: true }])),
+            dataMapping: Object.fromEntries(TIMELINE_FIELDS.map((name) => [name, { type: 'field', supportedRoles: ['category', 'numeric', 'temporal'], requires: { cardinality: 'many' }, required: true }])),
             form: (params: { createDefaults(options: { dataMappingItems: unknown[] }): unknown }) => params.createDefaults({ dataMappingItems: TIMELINE_FIELDS.map((key) => ({ key, label: key })) }),
             defaultSize: { width: 900, height: 400 },
             minSize: { width: 320, height: 200 },
