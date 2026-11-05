@@ -27,7 +27,7 @@ declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     interface IntrinsicElements {
-      'paypal-button': HTMLAttributes<HTMLElement> & { type?: string; class?: string };
+      'paypal-button': HTMLAttributes<HTMLElement> & { class?: string };
     }
   }
 }
@@ -104,7 +104,8 @@ export function HoldButton({ pullRequestId, clientId, amount }: { pullRequestId:
   return (
     <div className="pay">
       <Script src="https://www.sandbox.paypal.com/web-sdk/v6/core" strategy="afterInteractive" onReady={() => void setUp()} onError={() => setUnavailable(true)} />
-      {ready && !working && <paypal-button type="pay" class="paypal-gold" onClick={start} />}
+      {/* No `type`, which leaves just the PayPal logo. The other types all say to pay or buy, and this is a hold. */}
+      {ready && !working && <paypal-button class="paypal-gold" onClick={start} />}
       {!ready && !unavailable && <p className="muted">Loading PayPal.</p>}
       {working && <p className="muted">Placing your hold.</p>}
       {unavailable && <p className="warn">PayPal is not available right now. A vouch is free and does not need PayPal.</p>}

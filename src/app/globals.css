@@ -91,6 +91,11 @@ code {
   margin-top: 1rem;
 }
 
+paypal-button {
+  display: block;
+  width: 100%;
+}
+
 .scroll {
   overflow-x: auto;
 }
