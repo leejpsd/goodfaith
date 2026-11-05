@@ -2,7 +2,8 @@
 
 A stranger's pull request reaches review in one of two ways: a maintainer vouches for them for free, or they place a refundable PayPal hold that a good-faith review releases. Only a maintainer's command can capture the money. No model can.
 
-- **Hosted demo:** https://goodfaith.onrender.com
+- **Try it, with no login:** https://goodfaith.onrender.com/try opens a real pull request from a test account, and you play both sides
+- **Maintainer console, on AG Studio:** https://goodfaith.onrender.com/console
 - **Public ledger:** https://goodfaith.onrender.com/ledger
 - **Live demo repository:** https://github.com/leejpsd/goodfaith-demo
 
@@ -28,7 +29,9 @@ These answers protect maintainers by asking strangers to be known first. Goodfai
 
 The vouch comes first everywhere: in the bot's comment, on the hold page and in this file. A project can run the vouch door alone and lose nothing. A denounced author is not offered a hold, because money does not buy back a ban. A vouch that arrives after a hold releases the hold.
 
-Goodfaith reads the same file format and accepts the same `!vouch` command as `mitchellh/vouch`, so a project already using it keeps its list.
+Goodfaith reads the same `.github/VOUCHED.td` format as `mitchellh/vouch`, so a project already using it keeps its list. `!vouch` is the keyword Ghostty configures on that tool.
+
+A pull request that takes neither door waits outside the review queue with a pending check, and a maintainer never has to look at it. A project can make that check required, so nothing merges past it.
 
 ## What a hold does at PayPal
 
@@ -36,7 +39,7 @@ Goodfaith reads the same file format and accepts the same `!vouch` command as `m
 |---|---|---|
 | Newcomer places a hold | JS SDK v6, Orders v2 `intent: AUTHORIZE`, then authorize | Pull request enters review |
 | A maintainer reviews, merges or closes | Payments v2 void | Released in full |
-| Maintainer comments `!forfeit <reason>` | None | No money moves. The appeal window opens |
+| Maintainer comments `!forfeit <reason>` | None | The pull request closes and the appeal window opens. No money moves |
 | Author comments `!appeal <reason>` | None | Nothing can be captured until a maintainer answers |
 | Maintainer comments `!release` | Payments v2 void | Released in full |
 | Maintainer comments `!uphold`, or the appeal window closes with no appeal | Payments v2 reauthorize if past the honor period, then capture | Captured, and on the ledger |
@@ -44,7 +47,7 @@ Goodfaith reads the same file format and accepts the same `!vouch` command as `m
 | A day after the capture, unreversed | Payouts v1 | Paid to the project's receiver. A payout is final |
 | Nobody acts for 28 days | Payments v2 void | Released, one day before PayPal would expire it |
 | Any of these, including a change made on PayPal's dashboard | Verified webhooks | Ledger confirmed or corrected |
-| Captures and refunds | Transaction Search | Ledger rows marked as found, up to 3 hours later |
+| Captures and refunds | Transaction Search | Ledger rows marked as found once PayPal's report catches up, which took over five hours in the sandbox |
 
 **No timer and no model can start a capture.** The clock only finishes a forfeit that a maintainer started, or releases a hold.
 
@@ -58,7 +61,7 @@ The model reads what was public when the pull request opened: its title, descrip
 
 It has no tool to forfeit, vouch, refuse a door or change a bound. The size of a refundable hold is the most it can affect, never who gets in. Output is schema-validated, and any model failure falls back to the project's default amount.
 
-Band accuracy is being measured on real public pull requests under rules fixed in advance. See [`evals/triage/`](evals/triage/).
+Band accuracy is measured on real public pull requests, under [rules fixed in advance](evals/triage/RULES.md). [Their SHA-256 went in a public gist](https://gist.github.com/leejpsd/b55b5aa7b3d4dccf9d0649bbc46010ba) before the first run, so the timestamp shows they came first.
 
 ## What it stops, and what it survives
 
@@ -69,7 +72,8 @@ Band accuracy is being measured on real public pull requests under rules fixed i
 | `!forfeit` written in a review body | Counts as the forfeit, not as the review that would release the hold |
 | A command inside a quote or a code fence | Ignored |
 | A vouch arrives while the buyer is on PayPal | Nothing is held |
-| PayPal declines the payment method | Nothing is held, and the page offers another try |
+| PayPal declines the payment method | Nothing is held, and the page offers another try. The demo can ask PayPal's sandbox to act this out |
+| The app cannot save an authorization PayPal just made | It voids the authorization, so no money stays reserved with no record |
 | A retried capture | Same `PayPal-Request-Id`, so the same capture comes back |
 | PayPal refuses a capture | No money moves. The hold stays open until a release or the void deadline |
 | PayPal has an outage during a capture | Retries with the same request ID |
@@ -89,6 +93,19 @@ Band accuracy is being measured on real public pull requests under rules fixed i
 | `!release` | Maintainer | Voids the hold |
 | `!uphold` | Maintainer | Answers an appeal, and the capture follows |
 | `!reverse <reason>` | Maintainer | Refunds a capture before it is paid out |
+
+## Install it on a project
+
+Goodfaith is a GitHub App, and the hosted one is private to this demo for now. To run your own:
+
+1. Host the app, for example with `render.yaml`, which also creates the database.
+2. Register a GitHub App: `node harness/scripts/github-app-manifest.mjs` does this if you have the harness, or set these by hand.
+   - Permissions: checks write, issues write, pull requests write, contents read, metadata read.
+   - Events: pull request, pull request review, issue comment.
+   - Webhook: `https://<your-host>/api/github/webhook`, with a secret.
+3. Create a PayPal sandbox app, and subscribe `https://<your-host>/api/paypal/webhook` to the authorization, capture and payout events.
+4. Set the variables in `.env.example`.
+5. Install the app on a repository, and add `.github/goodfaith.json`.
 
 ## Project settings
 
@@ -124,7 +141,16 @@ flowchart LR
   Capture -->|a day later| Payout[Payout to the project]
 ```
 
-Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull request, review and comment events, and its signature is checked on every delivery. The money rules are one file with no I/O, [`src/lib/hold.ts`](src/lib/hold.ts). Everything that talks to PayPal is in [`src/server/hold-flow.ts`](src/server/hold-flow.ts) and [`src/lib/paypal/client.ts`](src/lib/paypal/client.ts). The AI is in [`src/lib/triage/triage.ts`](src/lib/triage/triage.ts).
+Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull request, review and comment events, and its signature is checked on every delivery. PayPal orders, payments and search go through the official Server SDK, built with APIMatic's PayPal Context Plugin. Payouts and webhook verification use REST, since the SDK has neither. The money rules are one file with no I/O, [`src/lib/hold.ts`](src/lib/hold.ts). Everything that talks to PayPal is in [`src/server/hold-flow.ts`](src/server/hold-flow.ts) and [`src/lib/paypal/client.ts`](src/lib/paypal/client.ts). The AI is in [`src/lib/triage/triage.ts`](src/lib/triage/triage.ts).
+
+## The maintainer console, on AG Studio
+
+[The console](https://goodfaith.onrender.com/console) shows the queue, every hold and the ledger, on the app's own data.
+
+- **A custom widget.** The hold timeline puts each hold on a 28-day ruler, with PayPal's honor period, the appeal window and the capture. It reads through Studio's data mapping, so filters apply to it.
+- **Custom theming.** It uses the same paper, ink and stamp as the rest of the site.
+- **A custom agent on the Studio Agent Framework.** It answers from the ledger and the fixed rules, and hands dashboard work to Studio's built-in page and widget agents. Its model calls go through the app's own route, so the key stays on the server.
+- **No agent on the team has a tool that touches PayPal.** Ask it to capture a hold, and it says it cannot and names the maintainer's command.
 
 ## Real and simulated
 
@@ -154,15 +180,15 @@ npm run dev
 ```
 
 ```sh
-npm test            # 159 tests, on an in-memory Postgres with fake PayPal and GitHub clients
+npm test            # runs on an in-memory Postgres with fake PayPal and GitHub clients
 npm run typecheck
 ```
 
 ## Built with
 
-PayPal JS SDK v6, Orders v2, Payments v2, Payouts v1, Webhooks and Transaction Search, all on the sandbox. OpenAI `gpt-6-luna` with structured outputs. Next.js, React, TypeScript, Drizzle, Postgres and Render.
+PayPal JS SDK v6, Orders v2, Payments v2, Payouts v1, Webhooks and Transaction Search, all on the sandbox, through the PayPal Server SDK where it has coverage. OpenAI `gpt-6-luna` with structured outputs. AG Studio. Next.js, React, TypeScript, Drizzle, Postgres and Render.
 
-This project was built with Claude Code, and commits it worked on carry a `Co-Authored-By` line.
+This project was built with Claude Code, using PayPal's AI Toolkit references and APIMatic's PayPal Context Plugin, and commits it worked on carry a `Co-Authored-By` line. Pull requests from before the evaluation show `gpt-6.1-sol` in their bot comments, because the product moved to `gpt-6-luna` after the [comparison on the tuning set](evals/triage/RULES.md).
 
 ## License
 

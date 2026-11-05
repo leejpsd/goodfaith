@@ -26,7 +26,7 @@ const PAGES = [
 
 const field = (id: string) => ({ id });
 
-const title = (text: string) => ({ title: { enabled: true, text } });
+const title = (text: string) => ({ title: { enabled: true, text, typography: { fontSize: 15 } } });
 const kpi = (id: string, aggregation: string, text: string) => ({ type: 'value', dataMapping: { value: [{ id, aggregation }] }, format: { style: { label: { enabled: true, text } } } });
 
 const INITIAL: AgReportState = {
@@ -44,11 +44,11 @@ const INITIAL: AgReportState = {
         list: { type: 'grid', dataMapping: { cols: ['pulls.number', 'pulls.title', 'pulls.status', 'pulls.entry', 'pulls.band', 'pulls.openedAt'].map(field) } },
       },
       widgetLayout: {
-        total: { xTrack: 0, yTrack: 0, xSpan: 6, ySpan: 6 },
-        open: { xTrack: 0, yTrack: 6, xSpan: 6, ySpan: 6 },
-        entry: { xTrack: 6, yTrack: 0, xSpan: 9, ySpan: 12 },
-        bands: { xTrack: 15, yTrack: 0, xSpan: 9, ySpan: 12 },
-        list: { xTrack: 0, yTrack: 12, xSpan: 24, ySpan: 16 },
+        total: { xTrack: 0, yTrack: 0, xSpan: 6, ySpan: 9 },
+        open: { xTrack: 0, yTrack: 9, xSpan: 6, ySpan: 9 },
+        entry: { xTrack: 6, yTrack: 0, xSpan: 9, ySpan: 18 },
+        bands: { xTrack: 15, yTrack: 0, xSpan: 9, ySpan: 18 },
+        list: { xTrack: 0, yTrack: 18, xSpan: 24, ySpan: 28 },
       },
     },
     {
@@ -59,20 +59,20 @@ const INITIAL: AgReportState = {
         list: { type: 'grid', dataMapping: { cols: ['holds.pr', 'holds.state', 'holds.amount', 'holds.placed', 'holds.appealEnds', 'holds.captured', 'holds.releaseBy'].map(field) } },
       },
       widgetLayout: {
-        timeline: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 14 },
-        list: { xTrack: 0, yTrack: 14, xSpan: 24, ySpan: 14 },
+        timeline: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 22 },
+        list: { xTrack: 0, yTrack: 22, xSpan: 24, ySpan: 24 },
       },
     },
     {
       id: 'ledger',
       name: 'Ledger',
       widgets: {
-        money: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('money.outcome')], valueKey: [{ id: 'money.amount', aggregation: 'sum' }] }, format: title('Money by outcome, USD. Forfeits and appeals move nothing, so they are not here') },
-        list: { type: 'grid', dataMapping: { cols: ['ledger.at', 'ledger.event', 'ledger.amount', 'ledger.pr', 'ledger.reason', 'ledger.paypalId'].map(field) } },
+        money: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('money.outcome')], valueKey: [{ id: 'money.amount', aggregation: 'sum' }] }, format: title('Money by outcome, USD') },
+        list: { type: 'grid', dataMapping: { cols: ['ledger.at', 'ledger.event', 'ledger.amount', 'ledger.pr', 'ledger.paypalId', 'ledger.reason'].map(field) } },
       },
       widgetLayout: {
-        money: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 11 },
-        list: { xTrack: 0, yTrack: 11, xSpan: 24, ySpan: 17 },
+        money: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 18 },
+        list: { xTrack: 0, yTrack: 18, xSpan: 24, ySpan: 28 },
       },
     },
   ],

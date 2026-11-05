@@ -99,11 +99,11 @@ export default async function Home() {
         <div className="doors">
           <div>
             <h3>The vouch</h3>
-            <p>The newcomer says what the change fixes, and a maintainer replies <code>!vouch</code>. No PayPal account, no money, and a $0 row on the public ledger. It reads the same list and takes the same command as <code>mitchellh/vouch</code>, so a project using it keeps what it has.</p>
+            <p>The newcomer says what the change fixes, and a maintainer replies <code>!vouch</code>. No PayPal account, no money, and a $0 row on the public ledger. It reads the same list as <code>mitchellh/vouch</code>, so a project using it keeps what it has.</p>
           </div>
           <div>
             <h3>The hold</h3>
-            <p>For a stranger who would rather not ask anyone for anything. PayPal reserves between $2 and $25, inside bounds the maintainers set in their repository. A maintainer&apos;s review, a merge or a close releases all of it. Nobody&apos;s money is captured for being wrong in good faith.</p>
+            <p>For a stranger who would rather not ask anyone for anything. PayPal reserves between $2 and $25, inside bounds the maintainers set in their repository. A maintainer&apos;s review, a merge or a close releases all of it, though the money stays reserved until then. Nobody&apos;s money is captured for being wrong in good faith.</p>
           </div>
         </div>
       </section>
@@ -112,7 +112,7 @@ export default async function Home() {
         <h2>Only a maintainer can take the money</h2>
         <p className="narrow">This is what happened on <a href="https://github.com/leejpsd/goodfaith-demo/pull/2">a test pull request</a> written to look low effort, with real sandbox money.</p>
         <ol className="steps">
-          <li><div><code>!forfeit Generic text that does not match the diff...</code> A maintainer gives a public reason. No money moves, and the author has time to answer.</div></li>
+          <li><div><code>!forfeit Generic text that does not match the diff...</code> One comment gives a public reason and closes the pull request. No money moves, and the author has time to answer.</div></li>
           <li><div><code>!appeal This is a test appeal from the demo account...</code> Nothing can be captured now until a maintainer answers.</div></li>
           <li><div><code>!uphold</code> PayPal captures the $25.00, and the capture goes on the ledger.</div></li>
           <li><div><code>!reverse Testing the refund path with sandbox money.</code> For one day, a maintainer can refund it in full. After that it is paid out to the project, and a payout is final.</div></li>
