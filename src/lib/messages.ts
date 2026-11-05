@@ -79,7 +79,7 @@ export function reviewerBriefComment(triage: Triage, cents: number): string {
     `- ${ISSUE[triage.addresses_issue]}`,
     `- Suggested hold: ${money(cents)}, the ${triage.band} band. ${triage.reasons.join(' ')}`,
     ...(triage.instructions_to_ai
-      ? [`- **Flagged:** this pull request has text aimed at AI reviewers: "${triage.instructions_to_ai}". It changed nothing, because no model can waive a hold.`]
+      ? [`- **Flagged:** this pull request has text aimed at AI reviewers: "${triage.instructions_to_ai}". It cannot waive anything, because no model can waive a hold.`]
       : []),
   ].join('\n');
 }

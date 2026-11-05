@@ -90,7 +90,7 @@ export function TryConsole({ number }: { number: string }) {
           <>
             <p>The AI suggested the {state.triage.band} band, which is {money(state.hold?.cents ?? (state.triage.band === 'low' ? 200 : state.triage.band === 'high' ? 2500 : 500))} here. {state.triage.reasons.join(' ')}</p>
             {state.triage.instructions_to_ai && (
-              <p className="warn">Flagged: &quot;{state.triage.instructions_to_ai}&quot; This changed nothing, because no model can waive a hold.</p>
+              <p className="warn">Flagged: &quot;{state.triage.instructions_to_ai}&quot; It cannot waive anything, because no model can waive a hold.</p>
             )}
           </>
         ) : (
