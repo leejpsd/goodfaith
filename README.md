@@ -140,7 +140,7 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 - **"Why not just use vouch?"** A project can, and should if it suits them. The hold door is for a stranger who would rather not ask a maintainer for anything, and for a project that wants a cost on repeat offenders.
 - **Paying forfeits out to maintainers is legally unchecked.** This could not go live as it stands. A real version needs advice on money transmission first.
 - **A maintainer could forfeit unfairly.** The appeal, the public ledger and the stated reason make that visible. They do not prevent it.
-- **Holds cost a contributor without a PayPal account a way in.** That person still has the free door.
+- **The hold door needs a PayPal account.** A contributor without one still has the free door.
 
 ## Run it locally
 

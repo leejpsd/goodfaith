@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
 import { holds, projects, pullRequests } from '@/db/schema';
@@ -28,8 +29,7 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
   const cents = holdAmount({ pr, project });
 
   return (
-    <main>
-      <p className="muted">Goodfaith</p>
+    <main className="page">
       <h1>{pr.title}</h1>
       <p className="muted">
         <a href={pr.htmlUrl}>Pull request #{pr.number}</a> on {project.owner}/{project.repo}, by @{pr.authorLogin}
@@ -77,9 +77,9 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
         </section>
       )}
 
-      <footer>
-        This demo uses PayPal sandbox money and test accounts. Every vouch and hold event is on the <a href="/ledger">public ledger</a>.
-      </footer>
+      <p className="muted" style={{ marginTop: '1.25rem' }}>
+        Every vouch and hold event is on the <Link href="/ledger">public ledger</Link>.
+      </p>
     </main>
   );
 }

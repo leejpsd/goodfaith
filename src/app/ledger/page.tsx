@@ -30,7 +30,7 @@ export default async function LedgerPage() {
     .limit(200);
 
   return (
-    <main className="wide">
+    <main className="page wide">
       <h1>Public ledger</h1>
       <p>Every vouch and every hold event. This demo uses PayPal sandbox money and test accounts.</p>
       <div className="scroll">
