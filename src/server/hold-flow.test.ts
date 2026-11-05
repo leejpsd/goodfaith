@@ -525,6 +525,15 @@ describe('PayPal webhooks', () => {
     expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured']);
   });
 
+  it('stops the payout when PayPal later denies a capture', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    const captureId = (await holdRow(pr.id)).captureId!;
+    await onPayPalEvent(hold, event('PAYMENT.CAPTURE.DENIED', { id: captureId }));
+    expect(github.comments.at(-1)).toContain('no money moved');
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    expect(paypal.payouts).toEqual([]);
+  });
+
   it('treats a void PayPal says already happened as done', async () => {
     const pr = await placedHold();
     paypal.voidError = new PayPalError('void', 422, 'PREVIOUSLY_VOIDED', 'debug');

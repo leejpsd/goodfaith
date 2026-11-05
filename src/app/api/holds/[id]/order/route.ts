@@ -1,3 +1,4 @@
+import { fromThisSite, notFromThisSite } from '@/lib/http/same-origin';
 import { beginHold, type Refusal } from '@/server/hold-flow';
 import { liveHoldDeps } from '@/server/live';
 
@@ -6,7 +7,8 @@ export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REFUSAL_STATUS: Record<Refusal, number> = { not_found: 404, not_waiting: 409, stale_order: 409, declined: 422 };
 
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!fromThisSite(request)) return notFromThisSite();
   const { id } = await context.params;
   if (!UUID.test(id)) return Response.json({ refused: 'not_found' }, { status: 404 });
   try {

@@ -1,3 +1,4 @@
+import { fromThisSite, notFromThisSite } from '@/lib/http/same-origin';
 import { z } from 'zod';
 import { ACTIONS, type TryAction } from '@/lib/demo/actions';
 import { runTryAction, tryState } from '@/server/try-flow';
@@ -14,6 +15,7 @@ export async function GET(_request: Request, context: { params: Promise<{ number
 }
 
 export async function POST(request: Request, context: { params: Promise<{ number: string }> }) {
+  if (!fromThisSite(request)) return notFromThisSite();
   const number = readNumber((await context.params).number);
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (number === null || !parsed.success) return Response.json({ refused: 'bad_request' }, { status: 400 });

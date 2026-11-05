@@ -1,3 +1,4 @@
+import { fromThisSite, notFromThisSite } from '@/lib/http/same-origin';
 import { z } from 'zod';
 import { startTry } from '@/server/try-flow';
 
@@ -6,6 +7,7 @@ export const dynamic = 'force-dynamic';
 const input = z.object({ kind: z.enum(['careful', 'low_effort']) });
 
 export async function POST(request: Request) {
+  if (!fromThisSite(request)) return notFromThisSite();
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ refused: 'bad_request' }, { status: 400 });
   try {

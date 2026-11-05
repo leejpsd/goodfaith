@@ -1,3 +1,4 @@
+import { fromThisSite, notFromThisSite } from '@/lib/http/same-origin';
 import { z } from 'zod';
 import { confirmHold, type Refusal } from '@/server/hold-flow';
 import { liveHoldDeps } from '@/server/live';
@@ -9,6 +10,7 @@ const REFUSAL_STATUS: Record<Refusal, number> = { not_found: 404, not_waiting: 4
 const input = z.object({ orderId: z.string().min(1).max(64), simulateDecline: z.boolean().optional() });
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!fromThisSite(request)) return notFromThisSite();
   const { id } = await context.params;
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!UUID.test(id) || !parsed.success) return Response.json({ refused: 'not_found' }, { status: 404 });

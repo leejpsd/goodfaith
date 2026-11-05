@@ -16,6 +16,11 @@ export const paypalEvent = z.object({
 });
 export type PayPalEvent = z.infer<typeof paypalEvent>;
 
+// A capture can come back pending and be refused later, and no money reached the project then.
+export function readRefusedCapture(event: PayPalEvent): string | null {
+  return (event.event_type === 'PAYMENT.CAPTURE.DENIED' || event.event_type === 'PAYMENT.CAPTURE.DECLINED') && event.resource.id ? event.resource.id : null;
+}
+
 export type Confirmation =
   | { confirmed: 'voided'; authorizationId: string }
   | { confirmed: 'captured'; captureId: string; authorizationId?: string }

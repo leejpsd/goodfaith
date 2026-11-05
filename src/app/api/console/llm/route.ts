@@ -1,3 +1,4 @@
+import { fromThisSite, notFromThisSite } from '@/lib/http/same-origin';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,7 @@ const input = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!fromThisSite(request)) return notFromThisSite();
   const raw = await request.text();
   if (raw.length > MAX_BODY_CHARS) return Response.json({ error: { code: 'too_long', message: 'That conversation is too long. Start a new one.' } }, { status: 413 });
   let json: unknown;

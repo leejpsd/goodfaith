@@ -8,6 +8,8 @@ import { liveHoldDeps } from '@/server/live';
 
 export const dynamic = 'force-dynamic';
 
+const ANSWER_WITHIN_MS = 20_000;
+
 export async function POST(request: Request) {
   const raw = await request.text();
   const h = request.headers;
@@ -37,13 +39,17 @@ export async function POST(request: Request) {
   const fresh = await db().insert(webhookDeliveries).values({ source: 'paypal', deliveryId: event.id }).onConflictDoNothing().returning();
   if (!fresh.length) return Response.json({ duplicate: true });
 
-  try {
-    await onPayPalEvent(liveHoldDeps(), event);
-    return Response.json({ ok: true });
-  } catch (error) {
-    // Forget the delivery, so PayPal's retry can run it again.
-    await db().delete(webhookDeliveries).where(and(eq(webhookDeliveries.source, 'paypal'), eq(webhookDeliveries.deliveryId, event.id)));
-    console.error('PayPal webhook failed', event.id, error instanceof Error ? error.message : 'unknown error');
-    return new Response('failed', { status: 500 });
-  }
+  const work = onPayPalEvent(liveHoldDeps(), event).then(
+    () => 'done' as const,
+    async (error: unknown) => {
+      // Forget the delivery, so PayPal's retry can run it again.
+      await db().delete(webhookDeliveries).where(and(eq(webhookDeliveries.source, 'paypal'), eq(webhookDeliveries.deliveryId, event.id)));
+      console.error('PayPal webhook failed', event.id, error instanceof Error ? error.message : 'unknown error');
+      return 'failed' as const;
+    },
+  );
+  // PayPal resends what takes over 30 seconds. Slow work carries on after the answer, and a slow
+  // GitHub is the usual cause, since the money state is saved before GitHub hears about it.
+  const waited = await Promise.race([work, new Promise<'slow'>((done) => setTimeout(() => done('slow'), ANSWER_WITHIN_MS))]);
+  return waited === 'failed' ? new Response('failed', { status: 500 }) : Response.json({ ok: true });
 }

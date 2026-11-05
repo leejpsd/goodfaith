@@ -21,7 +21,7 @@ import {
 } from '@/lib/messages';
 import { DEMO } from '@/lib/demo/constants';
 import { PayPalError } from '@/lib/paypal/client';
-import { readConfirmation, readPayout, type PayPalEvent } from '@/lib/paypal/webhook';
+import { readConfirmation, readPayout, readRefusedCapture, type PayPalEvent } from '@/lib/paypal/webhook';
 import { bandCents } from '@/lib/triage/triage';
 import type { HoldDeps } from './deps';
 
@@ -399,6 +399,22 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
   const payout = readPayout(event);
   if (payout) {
     await onPayoutEvent(deps, payout);
+    return;
+  }
+
+  const refused = readRefusedCapture(event);
+  if (refused) {
+    const [found] = await deps.db
+      .select({ hold: holds, pr: pullRequests, project: projects })
+      .from(holds)
+      .innerJoin(pullRequests, eq(holds.pullRequestId, pullRequests.id))
+      .innerJoin(projects, eq(pullRequests.projectId, projects.id))
+      .where(eq(holds.captureId, refused));
+    if (found) {
+      // Clearing the capture time stops the payout, since nothing arrived to pay out.
+      await deps.db.update(holds).set({ capturedAt: null, updatedAt: new Date() }).where(eq(holds.id, found.hold.id));
+      await tell(deps, { pr: found.pr, project: found.project }, { comment: captureFailedComment(found.hold.cents) });
+    }
     return;
   }
 
