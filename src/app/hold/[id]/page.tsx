@@ -47,6 +47,11 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
           </section>
           <section className="card">
             <h2>Or place a {money(cents)} refundable hold</h2>
+            <p className="muted">
+              {pr.triage
+                ? `An AI model suggested this amount, inside the ${money(project.minCents)} to ${money(project.maxCents)} a maintainer allows. ${pr.triage.reasons.join(' ')}`
+                : `This is the project's default amount, inside the ${money(project.minCents)} to ${money(project.maxCents)} a maintainer allows.`}
+            </p>
             <ul>
               <li>It is a hold and not a charge. PayPal reserves the amount, and no money moves.</li>
               <li>Any good-faith review releases all of it, merged or not.</li>

@@ -1,6 +1,7 @@
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { DoorDecision, AuthorAssociation } from '@/lib/gate';
 import type { HoldState } from '@/lib/hold';
+import type { Triage } from '@/lib/triage/triage';
 
 const id = () => uuid('id').primaryKey().defaultRandom();
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
@@ -39,7 +40,7 @@ export const pullRequests = pgTable(
     status: text('status').$type<PullRequestStatus>().notNull(),
     checkRunId: bigint('check_run_id', { mode: 'number' }),
     gateCommentId: bigint('gate_comment_id', { mode: 'number' }),
-    triage: jsonb('triage'),
+    triage: jsonb('triage').$type<Triage>(),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

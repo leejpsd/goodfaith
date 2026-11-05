@@ -6,6 +6,8 @@ import { issueCommentEvent, pullRequestEvent, pullRequestReviewEvent, verifySign
 import { paypalClient } from '@/lib/paypal/client';
 import { onIssueComment, onPullRequest, onPullRequestReview } from '@/server/gate-flow';
 import { appUrl } from '@/server/live';
+import { runTriage } from '@/lib/triage/triage';
+import { triageOpened } from '@/server/triage-flow';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +32,9 @@ export async function POST(request: Request) {
     if (event === 'pull_request') {
       const parsed = pullRequestEvent.parse(body);
       await onPullRequest(deps(parsed.installation.id), parsed);
+      void triageOpened(deps(parsed.installation.id), parsed, runTriage).catch((error: unknown) =>
+        console.error('Triage flow failed', error instanceof Error ? error.message : 'unknown error'),
+      );
     } else if (event === 'pull_request_review') {
       const parsed = pullRequestReviewEvent.parse(body);
       await onPullRequestReview(deps(parsed.installation.id), parsed);

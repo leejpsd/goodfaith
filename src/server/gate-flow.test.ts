@@ -20,6 +20,9 @@ class FakeGitHub implements GitHub {
   permissions: Record<string, Permission> = { maintainer: 'write' };
   file: string | null = null;
   next = 100;
+  prFacts = async (): Promise<never> => {
+    throw new Error('not used here');
+  };
   vouchFile = async () => this.file;
   permission = async (_o: string, _r: string, login: string) => this.permissions[login] ?? 'none';
   comment = async (_o: string, _r: string, _n: number, body: string) => {

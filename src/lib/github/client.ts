@@ -1,4 +1,5 @@
 import { createSign } from 'node:crypto';
+import { linkedIssueNumber, type OpenTimeFacts } from '@/lib/triage/triage';
 
 const API = 'https://api.github.com';
 
@@ -14,6 +15,7 @@ export interface GitHub {
   comment(owner: string, repo: string, number: number, body: string): Promise<number>;
   createCheck(owner: string, repo: string, sha: string, state: CheckState): Promise<number>;
   updateCheck(owner: string, repo: string, id: number, state: CheckState): Promise<void>;
+  prFacts(owner: string, repo: string, number: number, login: string): Promise<OpenTimeFacts>;
 }
 
 const base64url = (v: string | Buffer) => Buffer.from(v).toString('base64url');
@@ -93,6 +95,24 @@ export function githubFor(installationId: number): GitHub {
     },
     async updateCheck(owner, repo, id, state) {
       await json('PATCH', `/repos/${owner}/${repo}/check-runs/${id}`, checkBody(state));
+    },
+    async prFacts(owner, repo, number, login) {
+      const pr = await json<{ title: string; body: string | null }>('GET', `/repos/${owner}/${repo}/pulls/${number}`);
+      const files = await json<{ filename: string; additions: number; deletions: number; patch?: string }[]>('GET', `/repos/${owner}/${repo}/pulls/${number}/files?per_page=100`);
+      const account = await json<{ created_at: string }>('GET', `/users/${login}`);
+      const merges = await json<{ total_count: number }>('GET', `/search/issues?q=${encodeURIComponent(`is:pr is:merged author:${login}`)}&per_page=1`);
+      const description = pr.body ?? '';
+      const issueNumber = linkedIssueNumber(description);
+      const issue = issueNumber ? await call('GET', `/repos/${owner}/${repo}/issues/${issueNumber}`) : null;
+      const linked = issue?.ok ? ((await issue.json()) as { title: string; body: string | null }) : null;
+      return {
+        title: pr.title,
+        description,
+        files: files.map(({ filename, additions, deletions, patch }) => ({ filename, additions, deletions, patch })),
+        linkedIssue: linked && { title: linked.title, body: linked.body ?? '' },
+        accountAgeDays: Math.floor((Date.now() - Date.parse(account.created_at)) / 864e5),
+        earlierPublicMerges: merges.total_count,
+      };
     },
   };
 }

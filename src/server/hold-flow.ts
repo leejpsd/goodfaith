@@ -19,6 +19,7 @@ import {
 } from '@/lib/messages';
 import { PayPalError } from '@/lib/paypal/client';
 import { readConfirmation, type PayPalEvent } from '@/lib/paypal/webhook';
+import { bandCents } from '@/lib/triage/triage';
 import type { HoldDeps } from './deps';
 
 type HoldRow = typeof holds.$inferSelect;
@@ -74,8 +75,9 @@ async function record(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, kind
   });
 }
 
-export function holdAmount({ project }: Scope): number {
-  return holdCents(null, project);
+// The model's band picks a point inside the maintainer's bounds. With no triage, the default.
+export function holdAmount({ pr, project }: Scope): number {
+  return holdCents(pr.triage ? bandCents(pr.triage.band, project) : null, project);
 }
 
 export type Refusal = 'not_found' | 'not_waiting' | 'stale_order' | 'declined';

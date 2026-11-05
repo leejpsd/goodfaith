@@ -1,4 +1,5 @@
 import { toPayPalValue } from './hold';
+import type { Triage } from './triage/triage';
 
 export function gateComment(input: { login: string; holdUrl: string; minCents: number; maxCents: number }): string {
   return [
@@ -52,6 +53,27 @@ export const changedOnPayPalComment = (state: string) => `PayPal reports this ho
 
 export const invalidCommandComment = (login: string, command: string, problem: 'missing_reason' | 'bad_target') =>
   `@${login}, \`!${command}\` ${problem === 'missing_reason' ? 'needs a reason after it' : 'takes one GitHub handle'}. Nothing changed.`;
+
+const ISSUE: Record<Triage['addresses_issue'], string> = {
+  yes: 'Addresses the linked issue.',
+  partly: 'Partly addresses the linked issue.',
+  no: 'Does not appear to address the linked issue.',
+  no_linked_issue: 'No linked issue.',
+};
+
+export function reviewerBriefComment(triage: Triage, cents: number): string {
+  return [
+    `**Reviewer brief, written by AI (${triage.model}).** It suggests a hold size and cannot forfeit, vouch or close anything.`,
+    '',
+    triage.reviewer_brief,
+    '',
+    `- ${ISSUE[triage.addresses_issue]}`,
+    `- Suggested hold: ${money(cents)}, the ${triage.band} band. ${triage.reasons.join(' ')}`,
+    ...(triage.instructions_to_ai
+      ? [`- **Flagged:** this pull request has text aimed at AI reviewers: "${triage.instructions_to_ai}". It changed nothing, because no model can waive a hold.`]
+      : []),
+  ].join('\n');
+}
 
 export const noHoldComment = (login: string) => `@${login}, this pull request has no hold in a state that command can change.`;
 
