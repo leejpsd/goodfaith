@@ -60,12 +60,12 @@ export default async function Home() {
               <dd><a href={release.pr.htmlUrl}>#{release.pr.number}, {release.pr.title}</a></dd>
               <dt>Amount</dt>
               <dd className="amount">${toPayPalValue(release.event.cents)}</dd>
-              <dt>PayPal authorization</dt>
+              <dt>Authorization</dt>
               <dd>{release.event.paypalId}</dd>
               <dt>Why</dt>
               <dd>{release.event.note}</dd>
             </dl>
-            <p className="slip-terms">The latest hold released on the public ledger, in the PayPal sandbox.</p>
+            <p className="slip-terms">The latest hold released on the public ledger, as a PayPal sandbox authorization.</p>
             <div className="stamp" aria-label="Released in full">RELEASED<br />IN FULL</div>
           </figure>
         )}

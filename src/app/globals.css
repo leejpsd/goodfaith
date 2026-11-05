@@ -171,7 +171,7 @@ h3 {
 }
 
 .slip-title {
-  margin: 0 0 1rem;
+  margin: 0 0 2rem;
   font: 1.35rem/1.1 var(--display);
 }
 
@@ -207,13 +207,13 @@ h3 {
 
 .stamp {
   position: absolute;
+  top: 0.75rem;
   right: 0.75rem;
-  bottom: 3.5rem;
   padding: 0.3rem 0.7rem;
   border: 3px solid #5a2a8a;
   border-radius: 4px;
   color: #5a2a8a;
-  font: 700 1.2rem/1.1 var(--text);
+  font: 700 1.05rem/1.1 var(--text);
   letter-spacing: 0.06em;
   text-align: center;
   mix-blend-mode: multiply;
