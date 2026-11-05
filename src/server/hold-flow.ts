@@ -307,6 +307,15 @@ export async function runDue(deps: HoldDeps, now = new Date()): Promise<void> {
 const KIND = { voided: 'voided', captured: 'captured', refunded: 'refunded' } as const;
 
 export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise<void> {
+  // The hold is already recorded by the time PayPal reports it, so this only confirms the row.
+  if (event.event_type === 'PAYMENT.AUTHORIZATION.CREATED' && event.resource.id) {
+    const [held] = await deps.db.select({ id: holds.id }).from(holds).where(eq(holds.authorizationId, event.resource.id));
+    if (held) {
+      await deps.db.update(ledgerEvents).set({ reconciledAt: new Date() }).where(and(eq(ledgerEvents.holdId, held.id), eq(ledgerEvents.kind, 'held')));
+    }
+    return;
+  }
+
   const confirmation = readConfirmation(event);
   if (!confirmation) return;
   const ids = [

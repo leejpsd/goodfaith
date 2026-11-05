@@ -110,6 +110,11 @@ td {
   white-space: nowrap;
 }
 
+td.note {
+  min-width: 16rem;
+  white-space: normal;
+}
+
 th {
   color: var(--muted);
   font-weight: 500;

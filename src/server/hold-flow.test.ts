@@ -465,9 +465,18 @@ describe('PayPal webhooks', () => {
     expect(github.comments.at(-1)).not.toContain('outside this app');
   });
 
-  it('ignores event types it does not act on', async () => {
+  it('confirms the held row when PayPal reports the authorization', async () => {
     const pr = await placedHold();
     await onPayPalEvent(hold, event('PAYMENT.AUTHORIZATION.CREATED', { id: (await holdRow(pr.id)).authorizationId! }));
+    expect((await holdRow(pr.id)).state).toBe('held');
+    const rows = await db.select().from(ledgerEvents).where(eq(ledgerEvents.pullRequestId, pr.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.reconciledAt).not.toBeNull();
+  });
+
+  it('ignores event types it does not act on', async () => {
+    const pr = await placedHold();
+    await onPayPalEvent(hold, event('PAYMENT.CAPTURE.PENDING', { id: (await holdRow(pr.id)).authorizationId! }));
     expect((await holdRow(pr.id)).state).toBe('held');
   });
 });
