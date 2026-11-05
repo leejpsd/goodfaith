@@ -4,12 +4,28 @@ export const dynamic = 'force-dynamic';
 
 // The console's agent reaches the model through this route, so the key stays on the server.
 // The model is fixed here, and a daily ceiling limits what an open page can spend.
-const DAILY_LIMIT = 400;
+const DAILY_LIMIT = 300;
+const PER_VISITOR_HOURLY_LIMIT = 40;
 const MAX_BODY_CHARS = 200_000;
 const MAX_OUTPUT_TOKENS = 2_000;
 
 let day = '';
 let used = 0;
+const visitors = new Map<string, { hour: number; used: number }>();
+
+// The route answers anyone, since the console needs no login, so one visitor cannot use it all.
+function overVisitorLimit(request: Request): boolean {
+  const visitor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const hour = Math.floor(Date.now() / 36e5);
+  const entry = visitors.get(visitor);
+  if (!entry || entry.hour !== hour) {
+    if (visitors.size > 5000) visitors.clear();
+    visitors.set(visitor, { hour, used: 1 });
+    return false;
+  }
+  entry.used += 1;
+  return entry.used > PER_VISITOR_HOURLY_LIMIT;
+}
 
 const input = z.object({
   input: z.array(z.unknown()).max(200),
@@ -30,6 +46,8 @@ export async function POST(request: Request) {
   }
   const parsed = input.safeParse(json);
   if (!parsed.success) return Response.json({ error: { code: 'bad_request', message: 'The request could not be read.' } }, { status: 400 });
+
+  if (overVisitorLimit(request)) return Response.json({ error: { code: 'rate_limited', message: 'Too many questions for now. Try again in a while.' } }, { status: 429 });
 
   const today = new Date().toISOString().slice(0, 10);
   if (today !== day) {

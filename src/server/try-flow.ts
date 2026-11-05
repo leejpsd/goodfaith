@@ -6,6 +6,8 @@ import { commentAs, DEMO, demoEnabled, openTestPullRequest, reviewAs, type PullR
 
 // Each new pull request costs a model call, so the page has a daily ceiling.
 const DAILY_LIMIT = 40;
+// Earlier pull requests hold real elapsed time for the video, so no visitor can act on them.
+const FIRST_TRY_NUMBER = 6;
 
 export async function startTry(kind: PullRequestKind): Promise<{ number: number } | { refused: 'disabled' | 'limit' }> {
   if (!demoEnabled()) return { refused: 'disabled' };
@@ -24,6 +26,7 @@ export async function startTry(kind: PullRequestKind): Promise<{ number: number 
 }
 
 export async function tryState(number: number) {
+  if (number < FIRST_TRY_NUMBER) return null;
   const [row] = await db()
     .select({ pr: pullRequests, hold: holds })
     .from(pullRequests)

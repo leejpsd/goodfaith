@@ -166,11 +166,10 @@ async function runCommand(deps: Deps, row: Scope, command: Command, actor: strin
   // A plain `!vouch` is for this pull request's author. Vouching for someone else is
   // recorded for their future pull requests and leaves this one where it is.
   const target = command.target ?? row.pr.authorLogin;
-  const inserted = await deps.db
+  await deps.db
     .insert(vouches)
     .values({ projectId: row.project.id, login: target.toLowerCase(), vouchedBy: actor, pullRequestId: row.pr.id })
-    .onConflictDoNothing()
-    .returning();
+    .onConflictDoNothing();
   if (target.toLowerCase() !== row.pr.authorLogin.toLowerCase()) return;
   if (row.pr.status !== 'waiting') {
     // The free door stays open after a hold, and using it gives the money back.
@@ -178,10 +177,15 @@ async function runCommand(deps: Deps, row: Scope, command: Command, actor: strin
     return;
   }
 
-  await deps.db.update(pullRequests).set({ status: 'in_review', updatedAt: new Date() }).where(eq(pullRequests.id, row.pr.id));
-  if (inserted.length) {
-    await deps.db.insert(ledgerEvents).values({ projectId: row.project.id, pullRequestId: row.pr.id, kind: 'vouched', cents: 0, actor });
-  }
+  const [moved] = await deps.db
+    .update(pullRequests)
+    .set({ status: 'in_review', updatedAt: new Date() })
+    .where(and(eq(pullRequests.id, row.pr.id), eq(pullRequests.status, 'waiting')))
+    .returning();
+  // A repeat of the same comment finds the pull request already moved, and adds nothing.
+  if (!moved) return;
+  // Each pull request a vouch admits gets its row, even if this person was vouched for before.
+  await deps.db.insert(ledgerEvents).values({ projectId: row.project.id, pullRequestId: row.pr.id, kind: 'vouched', cents: 0, actor });
   if (row.pr.checkRunId) await deps.github.updateCheck(owner, repo, row.pr.checkRunId, CHECK.vouched);
   await deps.github.comment(owner, repo, number, vouchedComment(row.pr.authorLogin, actor));
 }

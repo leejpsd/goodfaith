@@ -56,7 +56,7 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
             <ul>
               <li>It is a hold and not a charge. PayPal reserves the amount, and no money moves.</li>
               <li>Any good-faith review releases all of it, merged or not.</li>
-              <li>Only a maintainer can forfeit it, with a stated reason, and you get {project.appealDays} days to appeal first. No model can.</li>
+              <li>Only a maintainer can forfeit it, with a stated reason, and you get {project.appealDays === 1 ? '1 day' : `${project.appealDays} days`} to appeal first. No model can.</li>
               <li>A hold nobody acts on is released after {AUTHORIZATION_DAYS - VOID_BEFORE_EXPIRY_DAYS} days.</li>
             </ul>
             <HoldButton pullRequestId={pr.id} clientId={process.env.PAYPAL_CLIENT_ID ?? ''} amount={toPayPalValue(cents)} />
