@@ -6,7 +6,7 @@ import { toPayPalValue } from '@/lib/hold';
 
 export const dynamic = 'force-dynamic';
 
-const LABEL = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded' } as const;
+const LABEL = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded', disputed: 'Dispute opened', dispute_resolved: 'Dispute resolved' } as const;
 
 async function recent() {
   try {
@@ -103,7 +103,7 @@ export default async function Home() {
           </div>
           <div>
             <h3>The hold</h3>
-            <p>For a stranger who would rather not ask anyone for anything. PayPal reserves between $2 and $25, inside bounds the maintainers set in their repository. A maintainer&apos;s review, a merge or a close releases all of it, though the money stays reserved until then. Nobody&apos;s money is captured for being wrong in good faith.</p>
+            <p>For a stranger who would rather not ask anyone for anything. PayPal reserves between $2 and $25, inside bounds the maintainers set in their repository. A maintainer&apos;s review, a merge or a close releases all of it, though the money stays reserved until then. It costs a maintainer nothing until they choose to look, and they can review held pull requests first.</p>
           </div>
         </div>
       </section>
@@ -157,7 +157,7 @@ export default async function Home() {
       <section className="band">
         <div className="narrow">
           <h2>What this does not solve</h2>
-          <p>It can read as a paywall on open source, and curl&apos;s maintainer has rejected a deposit for that reason. The free door answers this without removing the objection. A project can run the vouch door alone and lose nothing. A maintainer could still forfeit unfairly: the appeal and the public reason make that visible, but do not prevent it. And paying forfeits out to maintainers is legally unchecked, so this could not go live as it stands.</p>
+          <p>It can read as a paywall on open source, and <a href="https://leaddev.com/software-quality/open-source-has-a-big-ai-slop-problem">curl&apos;s maintainer has rejected a deposit</a> for that reason. The free door answers this without removing the objection. A good-faith contributor&apos;s money can stay reserved for up to 28 days on a slow project. A maintainer could still forfeit unfairly: the appeal and the public reason make that visible, but do not prevent it. And paying forfeits out is legally unchecked, so going live needs advice on money transmission first.</p>
         </div>
       </section>
     </main>

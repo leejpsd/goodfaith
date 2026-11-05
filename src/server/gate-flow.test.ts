@@ -36,6 +36,13 @@ class FakeGitHub implements GitHub {
     return id;
   };
   closed: number[] = [];
+  labels: string[] = [];
+  addLabel = async (_o: string, _r: string, _n: number, label: string) => {
+    this.labels.push(`add ${label}`);
+  };
+  removeLabel = async (_o: string, _r: string, _n: number, label: string) => {
+    this.labels.push(`remove ${label}`);
+  };
   closePullRequest = async (_o: string, _r: string, number: number) => {
     this.closed.push(number);
   };
@@ -193,6 +200,20 @@ describe('a maintainer vouches', () => {
     const pr = await prRow();
     const rows = await db.select().from(vouches).where(eq(vouches.projectId, pr!.projectId));
     expect(rows.map((r) => r.login)).toEqual(['other-person']);
+  });
+});
+
+describe('the waiting label', () => {
+  it('goes on at the gate and comes off with a vouch', async () => {
+    await onPullRequest(deps, prEvent());
+    expect(github.labels).toEqual(['add waiting for vouch or hold']);
+    await onIssueComment(deps, commentEvent('!vouch'));
+    expect(github.labels).toEqual(['add waiting for vouch or hold', 'remove waiting for vouch or hold']);
+  });
+
+  it('never goes on for a known contributor', async () => {
+    await onPullRequest(deps, prEvent({ author_association: 'CONTRIBUTOR' }));
+    expect(github.labels).toEqual([]);
   });
 });
 

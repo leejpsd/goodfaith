@@ -21,6 +21,24 @@ export function readRefusedCapture(event: PayPalEvent): string | null {
   return (event.event_type === 'PAYMENT.CAPTURE.DENIED' || event.event_type === 'PAYMENT.CAPTURE.DECLINED') && event.resource.id ? event.resource.id : null;
 }
 
+const disputeResource = z
+  .object({
+    dispute_id: z.string(),
+    disputed_transactions: z.array(z.object({ seller_transaction_id: z.string().optional() })).optional(),
+    dispute_outcome: z.object({ outcome_code: z.string().optional() }).optional(),
+  })
+  .loose();
+
+// A contributor can dispute a capture at PayPal, whatever the maintainers decided.
+export function readDispute(event: PayPalEvent): { phase: 'opened' | 'resolved'; disputeId: string; captureId: string; outcome?: string } | null {
+  const phase = event.event_type === 'CUSTOMER.DISPUTE.CREATED' ? 'opened' : event.event_type === 'CUSTOMER.DISPUTE.RESOLVED' ? 'resolved' : null;
+  if (!phase) return null;
+  const parsed = disputeResource.safeParse(event.resource);
+  const captureId = parsed.success ? parsed.data.disputed_transactions?.[0]?.seller_transaction_id : undefined;
+  if (!parsed.success || !captureId) return null;
+  return { phase, disputeId: parsed.data.dispute_id, captureId, outcome: parsed.data.dispute_outcome?.outcome_code };
+}
+
 export type Confirmation =
   | { confirmed: 'voided'; authorizationId: string }
   | { confirmed: 'captured'; captureId: string; authorizationId?: string }

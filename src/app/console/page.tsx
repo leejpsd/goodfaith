@@ -8,7 +8,7 @@ import { ConsoleLoader } from './console-loader';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Maintainer console' };
 
-const EVENT = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded' } as const;
+const EVENT = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded', disputed: 'Dispute opened', dispute_resolved: 'Dispute resolved' } as const;
 
 async function load(): Promise<ConsoleData> {
   const rows = await db().select({ pr: pullRequests, hold: holds }).from(pullRequests).leftJoin(holds, eq(holds.pullRequestId, pullRequests.id)).orderBy(desc(pullRequests.number)).limit(500);

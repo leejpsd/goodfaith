@@ -19,7 +19,7 @@ const EFFECT: Record<TryAction, string> = {
   reverse: 'PayPal refunds the capture in full. After a day it would be paid out and final.',
 };
 
-const LEDGER = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded' } as const;
+const LEDGER = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded', disputed: 'Dispute opened', dispute_resolved: 'Dispute resolved' } as const;
 
 function headline(state: TryState): string {
   const hold = state.hold?.state;

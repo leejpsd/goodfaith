@@ -10,11 +10,13 @@ const LABEL: Record<LedgerKind, string> = {
   vouched: 'Vouched',
   held: 'Hold placed',
   voided: 'Hold released',
-  forfeit_opened: 'Forfeit',
-  appealed: 'Appealed',
+  forfeit_opened: 'Forfeit, no money moved',
+  appealed: 'Appealed, no money moved',
   captured: 'Captured',
   paid_out: 'Paid out',
   refunded: 'Refunded',
+  disputed: 'Dispute opened',
+  dispute_resolved: 'Dispute resolved',
 };
 // These change nothing at PayPal, so no webhook will ever confirm them.
 const NO_PAYPAL_EVENT: readonly LedgerKind[] = ['vouched', 'forfeit_opened', 'appealed'];

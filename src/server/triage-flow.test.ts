@@ -42,6 +42,13 @@ class FakeGitHub implements GitHub {
   };
   createCheck = async (_o: string, _r: string, _s: string, _c: CheckState) => this.next++;
   closed: number[] = [];
+  labels: string[] = [];
+  addLabel = async (_o: string, _r: string, _n: number, label: string) => {
+    this.labels.push(`add ${label}`);
+  };
+  removeLabel = async (_o: string, _r: string, _n: number, label: string) => {
+    this.labels.push(`remove ${label}`);
+  };
   closePullRequest = async (_o: string, _r: string, number: number) => {
     this.closed.push(number);
   };

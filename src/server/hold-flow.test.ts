@@ -41,6 +41,13 @@ class FakeGitHub implements GitHub {
     return id;
   };
   closed: number[] = [];
+  labels: string[] = [];
+  addLabel = async (_o: string, _r: string, _n: number, label: string) => {
+    this.labels.push(`add ${label}`);
+  };
+  removeLabel = async (_o: string, _r: string, _n: number, label: string) => {
+    this.labels.push(`remove ${label}`);
+  };
   closePullRequest = async (_o: string, _r: string, number: number) => {
     this.closed.push(number);
   };
@@ -175,6 +182,11 @@ const ledgerKinds = async (pullRequestId: string) =>
   (await db.select().from(ledgerEvents).where(eq(ledgerEvents.pullRequestId, pullRequestId)).orderBy(ledgerEvents.createdAt)).map((row) => row.kind);
 
 describe('placing a hold', () => {
+  it('takes the waiting label off', async () => {
+    await placedHold();
+    expect(github.labels).toEqual(['add waiting for vouch or hold', 'remove waiting for vouch or hold']);
+  });
+
   it('authorizes, enters review and writes one ledger row', async () => {
     const pr = await placedHold();
     const row = await holdRow(pr.id);
@@ -657,6 +669,47 @@ describe('a payout', () => {
 
     await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.UNCLAIMED', { payout_batch_id: batch }));
     expect(github.comments.at(-1)).toContain('could not pay out');
+  });
+});
+
+describe('a PayPal dispute', () => {
+  const dispute = (type: string, captureId: string, outcome?: string) =>
+    event(type, { dispute_id: 'DISPUTE-1', disputed_transactions: [{ seller_transaction_id: captureId }], ...(outcome ? { dispute_outcome: { outcome_code: outcome } } : {}) } as PayPalEvent['resource']);
+
+  it('stops the payout and records the dispute', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await onPayPalEvent(hold, dispute('CUSTOMER.DISPUTE.CREATED', (await holdRow(pr.id)).captureId!));
+    expect(github.comments.at(-1)).toContain('dispute');
+    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured', 'disputed']);
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    expect(paypal.payouts).toEqual([]);
+  });
+
+  it('starts the payout again when PayPal finds for the project', async () => {
+    const { pr } = await capturedHold();
+    const captureId = (await holdRow(pr.id)).captureId!;
+    await onPayPalEvent(hold, dispute('CUSTOMER.DISPUTE.CREATED', captureId));
+    await onPayPalEvent(hold, dispute('CUSTOMER.DISPUTE.RESOLVED', captureId, 'RESOLVED_SELLER_FAVOUR'));
+    expect((await holdRow(pr.id)).capturedAt).not.toBeNull();
+    await runDue(hold, new Date(Date.now() + 2 * DAY));
+    expect(paypal.payouts).toHaveLength(1);
+  });
+
+  it('pays nothing out when PayPal finds for the contributor', async () => {
+    const { pr } = await capturedHold();
+    const captureId = (await holdRow(pr.id)).captureId!;
+    await onPayPalEvent(hold, dispute('CUSTOMER.DISPUTE.CREATED', captureId));
+    await onPayPalEvent(hold, dispute('CUSTOMER.DISPUTE.RESOLVED', captureId, 'RESOLVED_BUYER_FAVOUR'));
+    await runDue(hold, new Date(Date.now() + 2 * DAY));
+    expect(paypal.payouts).toEqual([]);
+  });
+
+  it('says so when the payout already went out', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await runDue(hold, new Date(capturedAt.getTime() + DAY + 1000));
+    await onPayPalEvent(hold, dispute('CUSTOMER.DISPUTE.CREATED', (await holdRow(pr.id)).captureId!));
+    const rows = await db.select().from(ledgerEvents).where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'disputed')));
+    expect(rows[0]!.note).toContain('already gone out');
   });
 });
 

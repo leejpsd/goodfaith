@@ -1,6 +1,11 @@
 import { PAYOUT_AFTER_DAYS, toPayPalValue } from './hold';
 import type { Triage } from './triage/triage';
 
+// A maintainer filters on this to see only what has been through a door.
+export const WAITING_LABEL = 'waiting for vouch or hold';
+
+const readableDate = (date: Date) => `${date.toISOString().slice(0, 16).replace('T', ' at ')} UTC`;
+
 export function gateComment(input: { login: string; holdUrl: string; minCents: number; maxCents: number }): string {
   return [
     `Welcome, @${input.login}. This project reviews a first pull request after one of these two steps.`,
@@ -34,7 +39,7 @@ export const releasedComment = (login: string, cents: number, because: string) =
   `@${login}, your ${money(cents)} hold is released in full, because ${because}.`;
 
 export const forfeitComment = (input: { login: string; by: string; cents: number; reason: string; appealEndsAt: Date }) =>
-  `@${input.by} moved to forfeit the ${money(input.cents)} hold and closed this pull request: ${input.reason}\n\nNo money has moved. @${input.login}, you can reply \`!appeal <reason>\` until ${input.appealEndsAt.toISOString()}. A maintainer can reply \`!release\` at any time.`;
+  `@${input.by} moved to forfeit the ${money(input.cents)} hold and closed this pull request: ${input.reason}\n\nNo money has moved. @${input.login}, you can reply \`!appeal <reason>\` until ${readableDate(input.appealEndsAt)}. A maintainer can reply \`!release\` at any time.`;
 
 export const appealComment = (login: string) =>
   `@${login} appealed. The hold stays in place and nothing can be captured until a maintainer answers with \`!release\` or \`!uphold\`. If nobody answers, the hold is released before PayPal would expire it.`;
@@ -78,6 +83,11 @@ export function reviewerBriefComment(triage: Triage, cents: number): string {
       : []),
   ].join('\n');
 }
+
+export const disputeOpenedComment = (cents: number) =>
+  `A PayPal dispute was opened on this ${money(cents)} capture, so the payout to the project is stopped until PayPal decides. If it was already paid out, that payout stands, and the operator bears the result.`;
+
+export const disputeResolvedComment = (outcome: string) => `PayPal resolved the dispute on this capture: ${outcome}.`;
 
 export const noHoldComment = (login: string) => `@${login}, this pull request has no hold in a state that command can change.`;
 

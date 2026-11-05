@@ -5,7 +5,7 @@ import { chooseDoor } from '@/lib/gate';
 import type { CheckState } from '@/lib/github/client';
 import { readSettings } from '@/lib/github/config';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
-import { CHECK, closedDoorComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment } from '@/lib/messages';
+import { CHECK, closedDoorComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment, WAITING_LABEL } from '@/lib/messages';
 import { listStatus, parseVouchList } from '@/lib/vouch';
 import type { Deps, HoldDeps } from './deps';
 import { onHoldCommand, releaseForReview, releaseForVouch, type Scope } from './hold-flow';
@@ -119,6 +119,7 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
   const checkRunId = await deps.github.createCheck(owner, repo, pr.head.sha, state);
   let gateCommentId: number | null = null;
   if (decision.door === 'choose') {
+    await deps.github.addLabel(owner, repo, pr.number, WAITING_LABEL).catch((error: unknown) => console.error('Adding the waiting label failed', error instanceof Error ? error.message : 'unknown error'));
     gateCommentId = await deps.github.comment(
       owner,
       repo,
@@ -186,6 +187,7 @@ async function runCommand(deps: Deps, row: Scope, command: Command, actor: strin
   if (!moved) return;
   // Each pull request a vouch admits gets its row, even if this person was vouched for before.
   await deps.db.insert(ledgerEvents).values({ projectId: row.project.id, pullRequestId: row.pr.id, kind: 'vouched', cents: 0, actor });
+  await deps.github.removeLabel(owner, repo, number, WAITING_LABEL).catch((error: unknown) => console.error('Removing the waiting label failed', error instanceof Error ? error.message : 'unknown error'));
   if (row.pr.checkRunId) await deps.github.updateCheck(owner, repo, row.pr.checkRunId, CHECK.vouched);
   await deps.github.comment(owner, repo, number, vouchedComment(row.pr.authorLogin, actor));
 }

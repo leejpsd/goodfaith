@@ -27,11 +27,13 @@ These answers protect maintainers by asking strangers to be known first. Goodfai
 | Vouch | A newcomer, once a maintainer comments `!vouch` | Enters review, and the ledger records a $0 vouch | None |
 | Hold | A newcomer who wants in without taking a maintainer's time first | Places a refundable hold, then enters review | A hold, not a charge |
 
-The vouch comes first everywhere: in the bot's comment, on the hold page and in this file. A project can run the vouch door alone and lose nothing. A denounced author is not offered a hold, because money does not buy back a ban. A vouch that arrives after a hold releases the hold.
+The vouch comes first everywhere: in the bot's comment, on the hold page and in this file. A denounced author is not offered a hold, because money does not buy back a ban. A vouch that arrives after a hold releases the hold.
+
+**Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first, and a low-effort sender can no longer spend a maintainer's time for free. Forfeits can go to a foundation or a charity through `payout_receiver`, so nobody gains by forfeiting.
 
 Goodfaith reads the same `.github/VOUCHED.td` format as `mitchellh/vouch`, so a project already using it keeps its list. `!vouch` is the keyword Ghostty configures on that tool.
 
-A pull request that takes neither door waits outside the review queue with a pending check, and a maintainer never has to look at it. A project can make that check required, so nothing merges past it.
+A pull request that takes neither door gets the label `waiting for vouch or hold` and a pending check. A maintainer's list can leave those out with `is:pr is:open -label:"waiting for vouch or hold"`, and a project can make the check required, so nothing merges past it. It still counts in GitHub's open total, and GitHub still notifies people who watch everything.
 
 ## What a hold does at PayPal
 
@@ -45,6 +47,7 @@ A pull request that takes neither door waits outside the review queue with a pen
 | Maintainer comments `!uphold`, or the appeal window closes with no appeal | Payments v2 reauthorize if past the honor period, then capture | Captured, and on the ledger |
 | Maintainer comments `!reverse <reason>` within a day of the capture | Payments v2 refund | Contributor repaid in full |
 | A day after the capture, unreversed | Payouts v1 | Paid to the project's receiver. A payout is final |
+| The contributor disputes the capture at PayPal | Dispute webhooks | The payout stops until PayPal decides, and the ledger records it |
 | Nobody acts for 28 days | Payments v2 void | Released, one day before PayPal would expire it |
 | Any of these, including a change made on PayPal's dashboard | Verified webhooks | Ledger confirmed or corrected |
 | Captures and refunds | Transaction Search | Ledger rows marked as found once PayPal's report catches up, which took over five hours in the sandbox |
@@ -99,11 +102,11 @@ Band accuracy is measured on real public pull requests, under [rules fixed in ad
 Goodfaith is a GitHub App, and the hosted one is private to this demo for now. To run your own:
 
 1. Host the app, for example with `render.yaml`, which also creates the database.
-2. Register a GitHub App: `node harness/scripts/github-app-manifest.mjs` does this if you have the harness, or set these by hand.
+2. Register a GitHub App with these settings.
    - Permissions: checks write, issues write, pull requests write, contents read, metadata read.
    - Events: pull request, pull request review, issue comment.
    - Webhook: `https://<your-host>/api/github/webhook`, with a secret.
-3. Create a PayPal sandbox app, and subscribe `https://<your-host>/api/paypal/webhook` to the authorization, capture and payout events.
+3. Create a PayPal sandbox app, and subscribe `https://<your-host>/api/paypal/webhook` to the authorization, capture, payout and dispute events.
 4. Set the variables in `.env.example`.
 5. Install the app on a repository, and add `.github/goodfaith.json`.
 
@@ -162,11 +165,13 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ## What this does not solve
 
-- **It can read as a paywall on open source.** curl's maintainer has rejected a deposit for that reason. The free door exists to answer this, and it does not remove the objection.
-- **"Why not just use vouch?"** A project can, and should if it suits them. The hold door is for a stranger who would rather not ask a maintainer for anything, and for a project that wants a cost on repeat offenders.
-- **Paying forfeits out to maintainers is legally unchecked.** This could not go live as it stands. A real version needs advice on money transmission first.
-- **A maintainer could forfeit unfairly.** The appeal, the public ledger and the stated reason make that visible. They do not prevent it.
+- **It can read as a paywall on open source.** [curl's maintainer has rejected a deposit](https://leaddev.com/software-quality/open-source-has-a-big-ai-slop-problem) for that reason. The free door answers this without removing the objection.
+- **"Why not just use vouch?"** A project that keeps up with vouch requests does not need this. The hold door is for the stranger with nobody to ask, and for the maintainer who has no attention left to answer.
+- **A good-faith contributor's money can stay reserved** until someone reviews, up to 28 days on a slow project. They get all of it back, but they do not have it in the meantime.
 - **The hold door needs a PayPal account.** A contributor without one still has the free door.
+- **A maintainer could forfeit unfairly.** The appeal, the public reason and the ledger make that visible. They do not prevent it.
+- **The AI reads a pull request only when it opens.** Someone could open a careful diff, get the low band, then push something else. A maintainer's review is what ends a hold, so the most this buys is a smaller hold.
+- **Paying forfeits out is legally unchecked.** Before going live, this needs advice on money transmission, or a design where each project is the merchant and Goodfaith never touches the money, which we have not tested.
 
 ## Run it locally
 

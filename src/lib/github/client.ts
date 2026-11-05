@@ -17,6 +17,8 @@ export interface GitHub {
   createCheck(owner: string, repo: string, sha: string, state: CheckState): Promise<number>;
   updateCheck(owner: string, repo: string, id: number, state: CheckState): Promise<void>;
   closePullRequest(owner: string, repo: string, number: number): Promise<void>;
+  addLabel(owner: string, repo: string, number: number, label: string): Promise<void>;
+  removeLabel(owner: string, repo: string, number: number, label: string): Promise<void>;
   prFacts(owner: string, repo: string, number: number, login: string): Promise<OpenTimeFacts>;
 }
 
@@ -102,6 +104,14 @@ export function githubFor(installationId: number): GitHub {
     },
     async closePullRequest(owner, repo, number) {
       await json('PATCH', `/repos/${owner}/${repo}/pulls/${number}`, { state: 'closed' });
+    },
+    async addLabel(owner, repo, number, label) {
+      await json('POST', `/repos/${owner}/${repo}/issues/${number}/labels`, { labels: [label] });
+    },
+    async removeLabel(owner, repo, number, label) {
+      const r = await call('DELETE', `/repos/${owner}/${repo}/issues/${number}/labels/${encodeURIComponent(label)}`);
+      // Already gone is the wanted result.
+      if (!r.ok && r.status !== 404) throw new Error(`GitHub remove label returned ${r.status}`);
     },
     async prFacts(owner, repo, number, login) {
       const pr = await json<{ title: string; body: string | null }>('GET', `/repos/${owner}/${repo}/pulls/${number}`);

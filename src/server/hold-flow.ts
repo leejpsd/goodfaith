@@ -13,7 +13,10 @@ import {
   CHECK,
   forfeitComment,
   heldComment,
+  disputeOpenedComment,
+  disputeResolvedComment,
   noHoldComment,
+  WAITING_LABEL,
   refundedComment,
   refusedComment,
   releasedComment,
@@ -21,7 +24,7 @@ import {
 } from '@/lib/messages';
 import { DEMO } from '@/lib/demo/constants';
 import { PayPalError } from '@/lib/paypal/client';
-import { readConfirmation, readPayout, readRefusedCapture, type PayPalEvent } from '@/lib/paypal/webhook';
+import { readConfirmation, readDispute, readPayout, readRefusedCapture, type PayPalEvent } from '@/lib/paypal/webhook';
 import { bandCents } from '@/lib/triage/triage';
 import type { HoldDeps } from './deps';
 
@@ -61,6 +64,14 @@ async function tell(deps: HoldDeps, { pr, project }: Scope, message: { check?: C
     if (message.comment) await github.comment(project.owner, project.repo, pr.number, message.comment);
   } catch (error) {
     console.error('GitHub notification failed', pr.id, error instanceof Error ? error.message : 'unknown error');
+  }
+}
+
+async function removeWaitingLabel(deps: HoldDeps, { pr, project }: Scope) {
+  try {
+    await deps.githubFor(project.installationId).removeLabel(project.owner, project.repo, pr.number, WAITING_LABEL);
+  } catch (error) {
+    console.error('Removing the waiting label failed', pr.id, error instanceof Error ? error.message : 'unknown error');
   }
 }
 
@@ -152,6 +163,7 @@ export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId
   if (!saved) return { ok: true };
 
   await deps.db.update(pullRequests).set({ status: 'in_review', updatedAt: new Date() }).where(eq(pullRequests.id, pullRequestId));
+  await removeWaitingLabel(deps, scope);
   await record(deps, scope, saved, 'held', { paypalId: authorization.authorizationId, actor: scope.pr.authorLogin });
   await tell(deps, scope, { check: CHECK.held, comment: heldComment(scope.pr.authorLogin, saved.cents) });
   return { ok: true };
@@ -371,6 +383,34 @@ export async function reconcile(deps: HoldDeps, now = new Date()): Promise<void>
 
 const KIND = { voided: 'voided', captured: 'captured', refunded: 'refunded' } as const;
 
+async function onDisputeEvent(deps: HoldDeps, dispute: NonNullable<ReturnType<typeof readDispute>>) {
+  const [found] = await deps.db
+    .select({ hold: holds, pr: pullRequests, project: projects })
+    .from(holds)
+    .innerJoin(pullRequests, eq(holds.pullRequestId, pullRequests.id))
+    .innerJoin(projects, eq(pullRequests.projectId, projects.id))
+    .where(eq(holds.captureId, dispute.captureId));
+  if (!found) return;
+  const scope = { pr: found.pr, project: found.project };
+
+  if (dispute.phase === 'opened') {
+    // No payout while PayPal decides. A hold already paid out stays paid, and the ledger says so.
+    if (found.hold.state === 'captured') await deps.db.update(holds).set({ capturedAt: null, updatedAt: new Date() }).where(eq(holds.id, found.hold.id));
+    await record(deps, scope, found.hold, 'disputed', { paypalId: dispute.disputeId, actor: 'PayPal', note: `the ${found.hold.state === 'paid_out' ? 'payout had already gone out' : 'payout is stopped'}`, reconciled: true });
+    await tell(deps, scope, { comment: disputeOpenedComment(found.hold.cents) });
+    return;
+  }
+
+  const outcome = dispute.outcome ?? 'no outcome reported';
+  // In the project's favour, the day of reversal starts again and the payout follows. In the
+  // contributor's favour, PayPal's own reversal event moves the hold to refunded.
+  if (found.hold.state === 'captured' && dispute.outcome === 'RESOLVED_SELLER_FAVOUR') {
+    await deps.db.update(holds).set({ capturedAt: new Date(), updatedAt: new Date() }).where(eq(holds.id, found.hold.id));
+  }
+  await record(deps, scope, found.hold, 'dispute_resolved', { paypalId: dispute.disputeId, actor: 'PayPal', note: outcome, reconciled: true });
+  await tell(deps, scope, { comment: disputeResolvedComment(outcome) });
+}
+
 async function onPayoutEvent(deps: HoldDeps, payout: NonNullable<ReturnType<typeof readPayout>>) {
   const [found] = await deps.db
     .select({ hold: holds, pr: pullRequests, project: projects })
@@ -399,6 +439,12 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
   const payout = readPayout(event);
   if (payout) {
     await onPayoutEvent(deps, payout);
+    return;
+  }
+
+  const dispute = readDispute(event);
+  if (dispute) {
+    await onDisputeEvent(deps, dispute);
     return;
   }
 

@@ -5,8 +5,9 @@ export const dynamic = 'force-dynamic';
 
 // The console's agent reaches the model through this route, so the key stays on the server.
 // The model is fixed here, and a daily ceiling limits what an open page can spend.
-const DAILY_LIMIT = 300;
-const PER_VISITOR_HOURLY_LIMIT = 40;
+// One question can take over a dozen calls when the agent hands work to Studio's agents.
+const DAILY_LIMIT = 1500;
+const PER_VISITOR_HOURLY_LIMIT = 120;
 const MAX_BODY_CHARS = 200_000;
 const MAX_OUTPUT_TOKENS = 2_000;
 
