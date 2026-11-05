@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Runs the product's own prompt over the collected pull requests through OpenAI's Batch API,
 // which costs half as much and can take up to a day. See RULES.md for what may run when.
-//   node --experimental-strip-types evals/triage/run.mjs submit <tuning|heldout> <model> <max-dollars>
+//   node --experimental-strip-types evals/triage/run.mjs submit <tuning|heldout|repeat> <model> <max-dollars>
 //   node --experimental-strip-types evals/triage/run.mjs status
+import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,7 +26,10 @@ const auth = { Authorization: `Bearer ${key}` };
 async function submit(scope, model, maxDollars) {
   const price = PRICE[model];
   if (!price) throw new Error(`no price for ${model}`);
-  const rows = readLines(join(data, 'facts.jsonl')).filter((r) => r.facts && (scope === 'tuning' ? r.tuning : !r.tuning));
+  const usable = readLines(join(data, 'facts.jsonl')).filter((r) => r.facts && (scope === 'tuning' ? r.tuning : !r.tuning));
+  // The repeat run is 100 held-out pull requests, drawn with the rules' seed.
+  const draw = (r) => createHash('sha256').update(`goodfaith-2026-11-05${r.url}`).digest();
+  const rows = scope === 'repeat' ? [...usable].sort((a, b) => Buffer.compare(draw(a), draw(b))).slice(0, 100) : usable;
   const lines = rows.map((r) =>
     JSON.stringify({
       custom_id: r.url,

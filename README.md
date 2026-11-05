@@ -6,7 +6,7 @@ A stranger's pull request reaches review in one of two ways: a maintainer vouche
 - **Public ledger:** https://goodfaith.onrender.com/ledger
 - **Live demo repository:** https://github.com/leejpsd/goodfaith-demo
 
-PayPal is the sandbox, and all money here is sandbox money. The AI model is OpenAI `gpt-6.1-sol`.
+PayPal is the sandbox, and all money here is sandbox money. The AI model is OpenAI `gpt-6-luna`.
 
 ## The problem
 
@@ -160,7 +160,7 @@ npm run typecheck
 
 ## Built with
 
-PayPal JS SDK v6, Orders v2, Payments v2, Payouts v1, Webhooks and Transaction Search, all on the sandbox. OpenAI `gpt-6.1-sol` with structured outputs. Next.js, React, TypeScript, Drizzle, Postgres and Render.
+PayPal JS SDK v6, Orders v2, Payments v2, Payouts v1, Webhooks and Transaction Search, all on the sandbox. OpenAI `gpt-6-luna` with structured outputs. Next.js, React, TypeScript, Drizzle, Postgres and Render.
 
 This project was built with Claude Code, and commits it worked on carry a `Co-Authored-By` line.
 
