@@ -21,7 +21,7 @@ export const triageOutput = z.object({
 export type TriageOutput = z.infer<typeof triageOutput>;
 export type Triage = TriageOutput & { model: string; at: string };
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'object',
   additionalProperties: false,
   required: ['band', 'reasons', 'addresses_issue', 'reviewer_brief', 'instructions_to_ai'],
