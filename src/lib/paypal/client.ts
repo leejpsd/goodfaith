@@ -45,7 +45,7 @@ export interface WebhookHeaders {
 // a request ID, so a retry returns the first result and cannot move money twice.
 export interface PayPal {
   createOrder(input: { cents: number; description: string; referenceId: string; returnUrl: string; cancelUrl: string }): Promise<string>;
-  authorizeOrder(orderId: string, requestId: string, options?: { simulateDecline?: boolean }): Promise<{ authorizationId: string; status: string }>;
+  authorizeOrder(orderId: string, requestId: string, options?: { simulateDecline?: boolean }): Promise<{ authorizationId: string; status: string; payerId: string | null }>;
   voidAuthorization(authorizationId: string, requestId: string): Promise<void>;
   reauthorize(authorizationId: string, cents: number, requestId: string): Promise<string>;
   capture(authorizationId: string, cents: number, requestId: string): Promise<{ captureId: string; status: string }>;
@@ -212,7 +212,7 @@ export function paypalClient(): PayPal {
       );
       const authorization = order.purchaseUnits?.[0]?.payments?.authorizations?.[0];
       if (!authorization?.id) throw new PayPalError('authorize order', 200, 'NO_AUTHORIZATION', undefined);
-      return { authorizationId: authorization.id, status: authorization.status ?? 'CREATED' };
+      return { authorizationId: authorization.id, status: authorization.status ?? 'CREATED', payerId: order.paymentSource?.paypal?.accountId ?? order.payer?.payerId ?? null };
     },
     async voidAuthorization(authorizationId, requestId) {
       await viaSdk('void', () => payments().voidPayment({ authorizationId, paypalRequestId: requestId, prefer: REPRESENTATION }));

@@ -74,6 +74,8 @@ export const holds = pgTable('holds', {
   cents: integer('cents').notNull(),
   orderId: text('order_id').notNull(),
   authorizationId: text('authorization_id'),
+  // PayPal's stable ID for the account, which limits open holds across every project.
+  payerId: text('payer_id'),
   authorizedAt: timestamp('authorized_at', { withTimezone: true }),
   reauthorized: boolean('reauthorized').notNull().default(false),
   appealEndsAt: timestamp('appeal_ends_at', { withTimezone: true }),

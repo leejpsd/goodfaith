@@ -1,4 +1,4 @@
-import { reconcile, runDue } from './hold-flow';
+import { closeOldDemoPulls, reconcile, runDue } from './hold-flow';
 import { liveHoldDeps } from './live';
 
 const MINUTE = 60_000;
@@ -17,6 +17,7 @@ export function startClock() {
     running = true;
     const reconciling = ++ticks % RECONCILE_EVERY === 0;
     runDue(liveHoldDeps())
+      .then(() => closeOldDemoPulls(liveHoldDeps()))
       .then(() => (reconciling ? reconcile(liveHoldDeps()) : undefined))
       .catch((error: unknown) => console.error('Hold clock failed', error instanceof Error ? error.message : 'unknown error'))
       .finally(() => {

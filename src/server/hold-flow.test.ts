@@ -11,7 +11,7 @@ import { PayPalError, type PayPal } from '@/lib/paypal/client';
 import type { PayPalEvent } from '@/lib/paypal/webhook';
 import type { Deps, HoldDeps } from './deps';
 import { onIssueComment, onPullRequest, onPullRequestReview } from './gate-flow';
-import { beginHold, confirmHold, onPayPalEvent, reconcile, runDue } from './hold-flow';
+import { beginHold, closeOldDemoPulls, confirmHold, onPayPalEvent, reconcile, runDue } from './hold-flow';
 
 const db = drizzle(new PGlite(), { schema });
 const DAY = 864e5;
@@ -68,13 +68,14 @@ class FakePayPal implements PayPal {
   orders = 0;
   createOrder = async () => `ORDER-${++this.orders}`;
   simulated: boolean[] = [];
+  payerId: string | null = null;
   voidError: PayPalError | null = null;
   authorizeOrder = async (orderId: string, requestId: string, options?: { simulateDecline?: boolean }) => {
     this.calls.push(`authorize ${orderId}`);
     this.requestIds.push(requestId);
     this.simulated.push(options?.simulateDecline === true);
     if (this.declineAuthorize || options?.simulateDecline) throw new PayPalError('authorize order', 422, 'INSTRUMENT_DECLINED', 'debug');
-    return { authorizationId: `AUTH-${orderId}`, status: 'CREATED' };
+    return { authorizationId: `AUTH-${orderId}`, status: 'CREATED', payerId: this.payerId };
   };
   voidAuthorization = async (id: string, requestId: string) => {
     this.calls.push(`void ${id}`);
@@ -289,6 +290,36 @@ describe('failures while placing a hold', () => {
     };
     await expect(confirmHold(broken, pr.id, begun.orderId)).rejects.toThrow('database is down');
     expect(paypal.calls.some((c) => c.startsWith('void AUTH-'))).toBe(true);
+  });
+});
+
+describe('the limit on open holds per PayPal account', () => {
+  async function holdOnNewRepo() {
+    repo = `repo-${++repoCounter}`;
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    return { pr, result: await confirmHold(hold, pr.id, begun.orderId) };
+  }
+
+  it('reaches across projects, and gives the sixth hold straight back', async () => {
+    paypal.payerId = 'SAME-PERSON';
+    for (let i = 0; i < 5; i++) expect((await holdOnNewRepo()).result).toEqual({ ok: true });
+    const sixth = await holdOnNewRepo();
+    expect(sixth.result).toEqual({ refused: 'too_many_holds' });
+    expect((await holdRow(sixth.pr.id)).state).toBe('awaiting_approval');
+    expect(paypal.calls.filter((c) => c.startsWith('void'))).toHaveLength(1);
+    expect(await ledgerKinds(sixth.pr.id)).toEqual([]);
+  });
+
+  it('counts only open holds, and only that account', async () => {
+    paypal.payerId = 'SAME-PERSON';
+    for (let i = 0; i < 5; i++) await holdOnNewRepo();
+    paypal.payerId = 'SOMEONE-ELSE';
+    expect((await holdOnNewRepo()).result).toEqual({ ok: true });
+    await db.update(holds).set({ state: 'voided' }).where(eq(holds.payerId, 'SAME-PERSON'));
+    paypal.payerId = 'SAME-PERSON';
+    expect((await holdOnNewRepo()).result).toEqual({ ok: true });
   });
 });
 
@@ -725,6 +756,23 @@ describe('Transaction Search', () => {
     await reconcile(hold);
     const after = await db.select().from(ledgerEvents).where(eq(ledgerEvents.kind, 'captured'));
     expect(after[0]!.searchedAt).not.toBeNull();
+  });
+});
+
+describe('closing old demo pull requests', () => {
+  async function demoPull(number: number, ageMs: number, status: 'waiting' | 'in_review' = 'in_review') {
+    const [project] = await db.insert(projects).values({ owner: 'leejpsd', repo: 'goodfaith-demo', installationId: 1 }).onConflictDoUpdate({ target: [projects.owner, projects.repo], set: { installationId: 1 } }).returning();
+    await db.delete(pullRequests).where(and(eq(pullRequests.projectId, project!.id), eq(pullRequests.number, number)));
+    await db.insert(pullRequests).values({ projectId: project!.id, number, authorLogin: 'leejpsd-goodfaith', authorAssociation: 'NONE', title: 'T', htmlUrl: `https://x/${number}`, headSha: 's', door: 'choose', status, createdAt: new Date(Date.now() - ageMs) });
+  }
+
+  it('closes a day-old try pull request and leaves the rest', async () => {
+    await demoPull(20, 2 * DAY);
+    await demoPull(21, 1000);
+    await demoPull(5, 2 * DAY);
+    github.closed = [];
+    await closeOldDemoPulls(hold);
+    expect(github.closed).toEqual([20]);
   });
 });
 

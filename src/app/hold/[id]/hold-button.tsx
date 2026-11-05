@@ -37,6 +37,7 @@ const MESSAGES: Record<string, string> = {
   not_waiting: 'This pull request no longer needs a hold, and nothing was held.',
   stale_order: 'That approval is out of date, and nothing was held. Please try again.',
   not_found: 'This hold page is no longer valid.',
+  too_many_holds: 'This PayPal account already has 5 open holds across projects, so nothing was held. A hold is released at review. A vouch is free and has no limit.',
   cancelled: 'You left PayPal, so nothing was held.',
 };
 const FAILED = 'PayPal could not finish this, and nothing was held. Please try again, or ask for a vouch instead.';

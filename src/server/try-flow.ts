@@ -2,12 +2,11 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { holds, ledgerEvents, projects, pullRequests, vouches } from '@/db/schema';
 import { ACTIONS, availableActions, type TryAction } from '@/lib/demo/actions';
+import { FIRST_TRY_NUMBER } from '@/lib/demo/constants';
 import { commentAs, DEMO, demoEnabled, openTestPullRequest, reviewAs, type PullRequestKind } from '@/lib/demo/github';
 
 // Each new pull request costs a model call, so the page has a daily ceiling.
 const DAILY_LIMIT = 40;
-// Earlier pull requests hold real elapsed time for the video, so no visitor can act on them.
-const FIRST_TRY_NUMBER = 6;
 
 export async function startTry(kind: PullRequestKind): Promise<{ number: number } | { refused: 'disabled' | 'limit' }> {
   if (!demoEnabled()) return { refused: 'disabled' };

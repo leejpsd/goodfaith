@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { holds, ledgerEvents, projects, pullRequests, type LedgerKind } from '@/db/schema';
 import type { Command } from '@/lib/commands';
 import type { CheckState } from '@/lib/github/client';
@@ -22,7 +22,7 @@ import {
   releasedComment,
   upheldComment,
 } from '@/lib/messages';
-import { DEMO } from '@/lib/demo/constants';
+import { DEMO, FIRST_TRY_NUMBER } from '@/lib/demo/constants';
 import { PayPalError } from '@/lib/paypal/client';
 import { readConfirmation, readDispute, readPayout, readRefusedCapture, type PayPalEvent } from '@/lib/paypal/webhook';
 import { bandCents } from '@/lib/triage/triage';
@@ -102,7 +102,11 @@ export function holdAmount({ pr, project }: Scope): number {
   return holdCents(pr.triage ? bandCents(pr.triage.band, project) : null, project);
 }
 
-export type Refusal = 'not_found' | 'not_waiting' | 'stale_order' | 'declined';
+export type Refusal = 'not_found' | 'not_waiting' | 'stale_order' | 'declined' | 'too_many_holds';
+
+// GitHub's own cap works per repository, so someone spraying many projects passes under it. A
+// hold ties up real funds, and PayPal's account ID follows the same person across all of them.
+export const MAX_OPEN_HOLDS_PER_ACCOUNT = 5;
 
 export async function beginHold(deps: HoldDeps, pullRequestId: string): Promise<{ orderId: string } | { refused: Refusal }> {
   const scope = await scopeOf(deps, pullRequestId);
@@ -147,11 +151,22 @@ export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId
   }
   if (authorization.status === 'DENIED') return { refused: 'declined' };
 
+  if (authorization.payerId) {
+    const [open] = await deps.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(holds)
+      .where(and(eq(holds.payerId, authorization.payerId), inArray(holds.state, [...OPEN])));
+    if ((open?.count ?? 0) >= MAX_OPEN_HOLDS_PER_ACCOUNT) {
+      await deps.paypal.voidAuthorization(authorization.authorizationId, `hold-${row.id}-void-${authorization.authorizationId}`);
+      return { refused: 'too_many_holds' };
+    }
+  }
+
   let saved: HoldRow | undefined;
   try {
     [saved] = await deps.db
       .update(holds)
-      .set({ state: 'held', authorizationId: authorization.authorizationId, authorizedAt: new Date(), updatedAt: new Date() })
+      .set({ state: 'held', authorizationId: authorization.authorizationId, payerId: authorization.payerId, authorizedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(holds.id, row.id), eq(holds.state, 'awaiting_approval')))
       .returning();
   } catch (error) {
@@ -379,6 +394,19 @@ export async function reconcile(deps: HoldDeps, now = new Date()): Promise<void>
   const seen = new Set(await deps.paypal.searchTransactions(new Date(now.getTime() - 2 * 864e5), now));
   const found = open.filter((row) => seen.has(row.paypalId!)).map((row) => row.id);
   if (found.length) await deps.db.update(ledgerEvents).set({ searchedAt: now }).where(inArray(ledgerEvents.id, found));
+}
+
+// Demo pull requests from the try page close themselves after a day, which releases any hold, so
+// the shared sandbox buyer never reaches the limit on open holds.
+const DEMO_LIFETIME_MS = 864e5;
+
+export async function closeOldDemoPulls(deps: HoldDeps, now = new Date()): Promise<void> {
+  const rows = await deps.db
+    .select({ pr: pullRequests, project: projects })
+    .from(pullRequests)
+    .innerJoin(projects, eq(pullRequests.projectId, projects.id))
+    .where(and(eq(projects.owner, DEMO.owner), eq(projects.repo, DEMO.repo), eq(pullRequests.authorLogin, DEMO.contributor), inArray(pullRequests.status, ['waiting', 'in_review']), gte(pullRequests.number, FIRST_TRY_NUMBER), lte(pullRequests.createdAt, new Date(now.getTime() - DEMO_LIFETIME_MS))));
+  for (const scope of rows) await closePullRequest(deps, scope);
 }
 
 const KIND = { voided: 'voided', captured: 'captured', refunded: 'refunded' } as const;

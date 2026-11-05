@@ -11,13 +11,17 @@ PayPal is the sandbox, and all money here is sandbox money. The AI model is Open
 
 ## The problem
 
-Open source maintainers are flooded with low-effort and AI-generated pull requests.
+Maintainers surveyed by [Linux Foundation Research](https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop) in October 2026 estimated that a quarter of incoming pull requests are low-quality AI slop, and 31% on large projects. In public GitHub data we collected, repositories with 1,000 or more stars using a `slop` label on a stranger's pull request went from 2 in the second quarter of 2025 to 63 in the third quarter of 2026. Some of that is projects starting to use the label.
 
-- About 5% of curl's bounty submissions were genuine by mid-2025, and [curl ended its bug bounty](https://www.theregister.com/2026/01/21/curl_ends_bug_bounty/) ([LeadDev](https://leaddev.com/software-quality/open-source-has-a-big-ai-slop-problem)).
-- [GitHub added settings to turn pull requests off](https://www.theregister.com/2026/02/03/github_kill_switch_pull_requests_ai/).
-- Ghostty closes pull requests from anyone not on its vouch list, using [`mitchellh/vouch`](https://github.com/mitchellh/vouch).
+So doors are closing. [Ladybird no longer accepts public pull requests](https://ladybird.org/posts/changing-how-we-develop-ladybird/), because effort was "a reasonable proxy for good faith" and no longer is. [tldraw closes outside pull requests automatically](https://tldraw.dev/blog/stay-away-from-my-trash). Ghostty closes them from anyone not on its [vouch list](https://github.com/mitchellh/vouch). [GitHub added a setting to turn pull requests off](https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/), and [warns](https://github.blog/open-source/maintainers/welcome-to-the-eternal-september-of-open-source-heres-what-we-plan-to-do-for-maintainers/) that such limits can fall hardest on "first-time contributors acting in good faith". [A 2026 preprint](https://arxiv.org/pdf/2607.04003) across 294 repositories found one-time contributors' merge rate running 18% below what its authors expected.
 
-These answers protect maintainers by asking strangers to be known first. Goodfaith keeps that door and adds one for a stranger who knows nobody.
+**Goodfaith is for a project that has closed, or is about to.** Against an open door, a hold is a toll. Against a closed one, it is more access than a stranger has today.
+
+## An old idea that was missing a piece
+
+Economists proposed this for email in 2004: [an unknown sender escrows a pledge, the recipient may seize it, and doing nothing releases it](https://rickwash.com/papers/spam-acm.pdf), with known senders on a whitelist. In 2012, [Rao and Reiley](https://www.andrew.cmu.edu/course/18-330/2019/reading/EconomicsOfSpam.pdf) pointed out what stopped it: "No method currently exists to link email accounts with payment mechanisms." A GitHub account and a PayPal authorization are that link, and that is why PayPal is the core of this project. Today, [Cantina](https://docs.cantina.security/researchers/participation/deposits), [Code4rena](https://docs.code4rena.com/bounties) and [Decred](https://bounty.decred.org/2026/07/bounty-program-resumes/) take refundable deposits on security reports, refunding honest mistakes as we do.
+
+**We do not claim a hold shrinks the flood.** We found no field measurement of a refundable bond anywhere, including theirs. What we can show is who it lets through, and where the money would land, on real public pull requests.
 
 ## The doors
 
@@ -29,7 +33,11 @@ These answers protect maintainers by asking strangers to be known first. Goodfai
 
 The vouch comes first everywhere: in the bot's comment, on the hold page and in this file. A denounced author is not offered a hold, because money does not buy back a ban. A vouch that arrives after a hold releases the hold.
 
-**Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first, and a low-effort sender can no longer spend a maintainer's time for free. Forfeits can go to a foundation or a charity through `payout_receiver`, so nobody gains by forfeiting.
+**Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first. We recommend sending forfeits to a charity or a foundation through `payout_receiver`, so nobody profits from rejecting someone.
+
+**It reaches across projects.** GitHub says its own pull request cap ["does nothing when someone opens pull requests across hundreds of repositories at once"](https://github.blog/open-source/maintainers/how-pull-request-limits-are-cutting-down-the-noise/). A hold ties up real funds, and one PayPal account can have at most 5 open across every project using Goodfaith. In our data, 43% of labelled pull requests came from authors labelled more than once.
+
+**Turn it off when it does not fit,** such as during an event for first-time contributors.
 
 Goodfaith reads the same `.github/VOUCHED.td` format as `mitchellh/vouch`, so a project already using it keeps its list. `!vouch` is the keyword Ghostty configures on that tool.
 
@@ -165,13 +173,16 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ## What this does not solve
 
-- **It can read as a paywall on open source.** [curl's maintainer has rejected a deposit](https://leaddev.com/software-quality/open-source-has-a-big-ai-slop-problem) for that reason. The free door answers this without removing the objection.
-- **"Why not just use vouch?"** A project that keeps up with vouch requests does not need this. The hold door is for the stranger with nobody to ask, and for the maintainer who has no attention left to answer.
-- **A good-faith contributor's money can stay reserved** until someone reviews, up to 28 days on a slow project. They get all of it back, but they do not have it in the meantime.
-- **The hold door needs a PayPal account.** A contributor without one still has the free door.
+- **It can read as a paywall on open source.** curl's maintainer [declined to charge security reporters](https://daniel.haxx.se/blog/2026/01/26/the-end-of-the-curl-bug-bounty/), for three reasons. International charging is a burden, and chargebacks add work: here PayPal carries both, and the project never holds the money. It would limit who can submit, and a hold does not solve that, which is why the free door comes first.
+- **A hold costs a sender nothing unless a maintainer forfeits it.** If maintainers rarely do, it deters little. A forfeit is also a public accusation, and some maintainers will not want that fight.
+- **Gates can turn away the wrong people.** [A study of 136 wikis](https://en.wikipedia.org/wiki/Wikipedia:Wikipedia_Signpost/2021-08-29/Recent_research) found most contributions deterred by a free account requirement were higher quality. Measured prices elsewhere cut volume without targeting low quality.
+- **PayPal does not reach everyone.** By our rough calculation, about 7.5% of GitHub's developers are in economies missing from PayPal's country list, India is unclear, and a US account needs someone 18 or over. All of them still have the free door.
+- **A good-faith contributor's money can stay reserved** until someone reviews, up to 28 days on a slow project, and that matters on a student's debit card.
 - **A maintainer could forfeit unfairly.** The appeal, the public reason and the ledger make that visible. They do not prevent it.
 - **The AI reads a pull request only when it opens.** Someone could open a careful diff, get the low band, then push something else. A maintainer's review is what ends a hold, so the most this buys is a smaller hold.
 - **Paying forfeits out is legally unchecked.** Before going live, this needs advice on money transmission, or a design where each project is the merchant and Goodfaith never touches the money, which we have not tested.
+
+Similar bonds exist: some ask only AI agents, and some take a crypto deposit. What Goodfaith puts together is a free vouch before any money, any stranger, a PayPal account rather than a crypto wallet, and a model that cannot forfeit.
 
 ## Run it locally
 

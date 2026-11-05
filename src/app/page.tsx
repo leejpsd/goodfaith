@@ -73,9 +73,12 @@ export default async function Home() {
 
       <section className="band">
         <div className="narrow">
-          <h2>Why this exists</h2>
+          <h2>The doors are closing</h2>
           <p>
-            About 5% of curl&apos;s bounty submissions were genuine by mid-2025, <a href="https://leaddev.com/software-quality/open-source-has-a-big-ai-slop-problem">LeadDev reported</a>, and <a href="https://www.theregister.com/2026/01/21/curl_ends_bug_bounty/">curl ended its bounty</a>. <a href="https://www.theregister.com/2026/02/03/github_kill_switch_pull_requests_ai/">GitHub added settings to turn pull requests off</a>. Ghostty closes pull requests from anyone not on its <a href="https://github.com/mitchellh/vouch">vouch list</a>. All of these ask a stranger to be known first. Goodfaith keeps that door and adds one for a stranger who knows nobody.
+            Maintainers estimate <a href="https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop">a quarter of incoming pull requests are low-quality AI slop</a>. <a href="https://ladybird.org/posts/changing-how-we-develop-ladybird/">Ladybird no longer accepts public pull requests</a>, <a href="https://tldraw.dev/blog/stay-away-from-my-trash">tldraw closes outside ones automatically</a>, and <a href="https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/">GitHub added a setting to turn them off</a>. In public data we collected, repositories with 1,000 or more stars using a <code>slop</code> label on a stranger&apos;s pull request went from 2 to 63 in a little over a year.
+          </p>
+          <p>
+            A stranger with a good fix is the one who loses. Goodfaith is for a project that has closed, or is about to. Against an open door, a hold is a toll. Against a closed one, it is more access than that stranger has today. We do not claim a hold shrinks the flood, because nobody has measured that for any refundable bond. <Link href="/replay">See what it would do on a real project</Link>.
           </p>
         </div>
       </section>
@@ -158,7 +161,7 @@ export default async function Home() {
       <section className="band">
         <div className="narrow">
           <h2>What this does not solve</h2>
-          <p>It can read as a paywall on open source, and <a href="https://leaddev.com/software-quality/open-source-has-a-big-ai-slop-problem">curl&apos;s maintainer has rejected a deposit</a> for that reason. The free door answers this without removing the objection. A good-faith contributor&apos;s money can stay reserved for up to 28 days on a slow project. A maintainer could still forfeit unfairly: the appeal and the public reason make that visible, but do not prevent it. And paying forfeits out is legally unchecked, so going live needs advice on money transmission first.</p>
+          <p>It can read as a paywall on open source, and <a href="https://daniel.haxx.se/blog/2026/01/26/the-end-of-the-curl-bug-bounty/">curl&apos;s maintainer declined to charge security reporters</a>, partly because it would limit who can submit. A hold does not solve that, which is why the free door comes first. A hold costs a sender nothing unless a maintainer forfeits it. PayPal does not reach everyone. A good-faith contributor&apos;s money can stay reserved for up to 28 days on a slow project. A maintainer could still forfeit unfairly: the appeal and the public reason make that visible, but do not prevent it. And paying forfeits out is legally unchecked, so going live needs advice on money transmission first.</p>
         </div>
       </section>
     </main>
