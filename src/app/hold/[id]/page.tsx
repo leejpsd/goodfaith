@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
+import { DEMO } from '@/lib/demo/github';
 import { holds, projects, pullRequests } from '@/db/schema';
 import { AUTHORIZATION_DAYS, toPayPalValue, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
 import { holdAmount } from '@/server/hold-flow';
@@ -77,6 +78,9 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
         </section>
       )}
 
+      {pr.authorLogin === DEMO.contributor && (
+        <p style={{ marginTop: '1.25rem' }}><Link href={`/try/${pr.number}`}>Back to the demo</Link></p>
+      )}
       <p className="muted" style={{ marginTop: '1.25rem' }}>
         Every vouch and hold event is on the <Link href="/ledger">public ledger</Link>.
       </p>

@@ -350,6 +350,40 @@ td.id {
   font-family: var(--typed);
 }
 
+/* Try page */
+.choices {
+  display: grid;
+  gap: 1rem;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.choices li + li {
+  margin-top: 0 !important;
+}
+
+.choices .button {
+  margin-bottom: 0.35rem;
+}
+
+button.button {
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.button.primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+button.button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 /* Hold page */
 .page {
   max-width: 44rem;

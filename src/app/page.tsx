@@ -48,7 +48,7 @@ export default async function Home() {
             Goodfaith is a GitHub App for maintainers flooded with low-effort pull requests. A stranger reaches review when a maintainer vouches for them, or by placing a small refundable PayPal hold. A good-faith review releases all of it. Only a maintainer can forfeit it, and no model can.
           </p>
           <div className="actions">
-            <a className="button primary" href="https://github.com/leejpsd/goodfaith-demo/pull/2">See a real pull request</a>
+            <Link className="button primary" href="/try">Try it, with no login</Link>
             <Link className="button" href="/ledger">Read the public ledger</Link>
           </div>
         </div>
