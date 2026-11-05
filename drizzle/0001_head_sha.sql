@@ -1,0 +1,1 @@
+ALTER TABLE "pull_requests" ADD COLUMN "head_sha" text NOT NULL;

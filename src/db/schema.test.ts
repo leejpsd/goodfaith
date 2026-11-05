@@ -22,6 +22,7 @@ async function seed(number: number, repo = `repo-${number}`) {
       authorAssociation: 'FIRST_TIME_CONTRIBUTOR',
       title: 'Fix',
       htmlUrl: 'https://example.com',
+      headSha: 'abc',
       door: 'choose',
       status: 'waiting',
     })
@@ -45,6 +46,7 @@ describe('schema', () => {
         authorAssociation: 'NONE',
         title: 't',
         htmlUrl: 'u',
+        headSha: 'abc',
         door: 'choose',
         status: 'waiting',
       }),

@@ -34,6 +34,7 @@ export const pullRequests = pgTable(
     authorAssociation: text('author_association').$type<AuthorAssociation>().notNull(),
     title: text('title').notNull(),
     htmlUrl: text('html_url').notNull(),
+    headSha: text('head_sha').notNull(),
     door: text('door').$type<DoorDecision['door']>().notNull(),
     status: text('status').$type<PullRequestStatus>().notNull(),
     checkRunId: bigint('check_run_id', { mode: 'number' }),

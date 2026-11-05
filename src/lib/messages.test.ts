@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest';
+import { closedDoorComment, gateComment } from './messages';
+
+describe('gateComment', () => {
+  const text = gateComment({ login: 'new-person', holdUrl: 'https://x/hold/1', minCents: 200, maxCents: 2500 });
+
+  it('offers the free vouch before any money', () => {
+    expect(text.indexOf('vouch')).toBeGreaterThan(-1);
+    expect(text.indexOf('vouch')).toBeLessThan(text.indexOf('hold'));
+    expect(text.indexOf('vouch')).toBeLessThan(text.indexOf('$'));
+    expect(text).toContain('free');
+  });
+
+  it('says a hold is not a charge and how it comes back', () => {
+    expect(text).toContain('not a charge');
+    expect(text).toContain('merged or not');
+    expect(text).toContain('Only a maintainer');
+    expect(text).toContain('appeal');
+  });
+
+  it('shows the bounds and the link', () => {
+    expect(text).toContain('$2.00 to $25.00');
+    expect(text).toContain('https://x/hold/1');
+  });
+});
+
+describe('closedDoorComment', () => {
+  it('offers no way to pay around a ban', () => {
+    const text = closedDoorComment('someone');
+    expect(text).toContain('A hold cannot change that');
+    expect(text).not.toContain('$');
+  });
+});
