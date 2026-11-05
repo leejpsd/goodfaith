@@ -23,6 +23,7 @@ class FakeGitHub implements GitHub {
   prFacts = async (): Promise<never> => {
     throw new Error('not used here');
   };
+  settingsFile = async (): Promise<string | null> => null;
   vouchFile = async () => this.file;
   permission = async (_o: string, _r: string, login: string) => this.permissions[login] ?? 'none';
   comment = async (_o: string, _r: string, _n: number, body: string) => {
@@ -51,6 +52,8 @@ class UnusedPayPal implements PayPal {
   capture = this.fail;
   refund = this.fail;
   verifyWebhook = this.fail;
+  payout = this.fail;
+  searchTransactions = this.fail;
 }
 
 let github: FakeGitHub;
@@ -245,6 +248,20 @@ describe('who may not vouch', () => {
     await onPullRequest(deps, prEvent());
     await onIssueComment(deps, commentEvent('!vouch', 'maintainer', { action: 'edited' }));
     expect(await prRow()).toMatchObject({ status: 'waiting' });
+  });
+});
+
+describe('project settings', () => {
+  it('reads the bounds from the repo when a pull request opens', async () => {
+    github.settingsFile = async () => '{"min_cents":300,"max_cents":900,"default_cents":600,"appeal_days":2}';
+    await onPullRequest(deps, prEvent());
+    expect(github.comments[0]).toContain('$3.00 to $9.00');
+  });
+
+  it('keeps the defaults when the file is broken', async () => {
+    github.settingsFile = async () => '{ not json';
+    await onPullRequest(deps, prEvent());
+    expect(github.comments[0]).toContain('$2.00 to $25.00');
   });
 });
 

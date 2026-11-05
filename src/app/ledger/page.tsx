@@ -18,6 +18,8 @@ const LABEL: Record<LedgerKind, string> = {
 };
 // These change nothing at PayPal, so no webhook will ever confirm them.
 const NO_PAYPAL_EVENT: readonly LedgerKind[] = ['vouched', 'forfeit_opened', 'appealed'];
+// PayPal's Transaction Search lags by up to three hours, so "not yet" is normal at first.
+const SEARCHABLE: readonly LedgerKind[] = ['captured', 'refunded'];
 
 export default async function LedgerPage() {
   const rows = await db()
@@ -34,7 +36,7 @@ export default async function LedgerPage() {
       <div className="scroll">
       <table>
         <thead>
-          <tr><th>When</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>Reason</th><th>PayPal ID</th><th>PayPal webhook</th></tr>
+          <tr><th>When</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>Reason</th><th>PayPal ID</th><th>PayPal webhook</th><th>Transaction Search</th></tr>
         </thead>
         <tbody>
           {rows.map(({ event, pr }) => (
@@ -47,6 +49,7 @@ export default async function LedgerPage() {
               <td className="note">{event.note ?? 'none'}</td>
               <td>{event.paypalId ?? 'none'}</td>
               <td>{NO_PAYPAL_EVENT.includes(event.kind) ? 'none' : event.reconciledAt ? 'confirmed' : 'not yet'}</td>
+              <td>{SEARCHABLE.includes(event.kind) ? (event.searchedAt ? 'found' : 'not yet') : 'none'}</td>
             </tr>
           ))}
         </tbody>

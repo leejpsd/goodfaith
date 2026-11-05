@@ -3,6 +3,7 @@ import { holds, ledgerEvents, projects, pullRequests, vouches, type PullRequestS
 import { mayUse, parseCommand, type Command } from '@/lib/commands';
 import { chooseDoor } from '@/lib/gate';
 import type { CheckState } from '@/lib/github/client';
+import { readSettings } from '@/lib/github/config';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
 import { CHECK, closedDoorComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment } from '@/lib/messages';
 import { listStatus, parseVouchList } from '@/lib/vouch';
@@ -37,6 +38,8 @@ function checkFor(pr: Scope['pr'], hold: StoredHoldState | undefined): CheckStat
       return CHECK.forfeitPending;
     case 'captured':
       return CHECK.captured;
+    case 'paid_out':
+      return CHECK.paidOut;
     case 'voided':
       return CHECK.released;
     case 'refunded':
@@ -50,7 +53,15 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
   const owner = event.repository.owner.login;
   const repo = event.repository.name;
   const pr = event.pull_request;
-  const project = await projectFor(deps, owner, repo, event.installation.id);
+  let project = await projectFor(deps, owner, repo, event.installation.id);
+  if (event.action === 'opened') {
+    const [updated] = await deps.db
+      .update(projects)
+      .set(readSettings(await deps.github.settingsFile(owner, repo), project))
+      .where(eq(projects.id, project.id))
+      .returning();
+    project = updated ?? project;
+  }
   const [existing] = await deps.db
     .select()
     .from(pullRequests)

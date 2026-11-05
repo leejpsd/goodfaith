@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { holds, ledgerEvents, pullRequests } from '@/db/schema';
+import { holds, ledgerEvents, projects, pullRequests } from '@/db/schema';
 import * as schema from '@/db/schema';
 import type { CheckState, GitHub, Permission } from '@/lib/github/client';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
@@ -11,7 +11,7 @@ import { PayPalError, type PayPal } from '@/lib/paypal/client';
 import type { PayPalEvent } from '@/lib/paypal/webhook';
 import type { Deps, HoldDeps } from './deps';
 import { onIssueComment, onPullRequest, onPullRequestReview } from './gate-flow';
-import { beginHold, confirmHold, onPayPalEvent, runDue } from './hold-flow';
+import { beginHold, confirmHold, onPayPalEvent, reconcile, runDue } from './hold-flow';
 
 const db = drizzle(new PGlite(), { schema });
 const DAY = 864e5;
@@ -27,6 +27,7 @@ class FakeGitHub implements GitHub {
   prFacts = async (): Promise<never> => {
     throw new Error('not used here');
   };
+  settingsFile = async () => null;
   vouchFile = async () => null;
   permission = async (_o: string, _r: string, login: string) => this.permissions[login] ?? 'none';
   comment = async (_o: string, _r: string, _n: number, body: string) => {
@@ -80,6 +81,16 @@ class FakePayPal implements PayPal {
     return `REF-${id}`;
   };
   verifyWebhook = async () => true;
+  payoutError: PayPalError | null = null;
+  payouts: { cents: number; receiver: string; senderId: string }[] = [];
+  searchResults: string[] = [];
+  payout = async (input: { cents: number; receiver: string; note: string; senderId: string }) => {
+    this.calls.push(`payout ${input.receiver}`);
+    if (this.payoutError) throw this.payoutError;
+    this.payouts.push(input);
+    return `BATCH-${input.senderId}`;
+  };
+  searchTransactions = async () => this.searchResults;
 }
 
 let github: FakeGitHub;
@@ -478,6 +489,95 @@ describe('PayPal webhooks', () => {
     const pr = await placedHold();
     await onPayPalEvent(hold, event('PAYMENT.CAPTURE.PENDING', { id: (await holdRow(pr.id)).authorizationId! }));
     expect((await holdRow(pr.id)).state).toBe('held');
+  });
+});
+
+async function capturedHold(receiver: string | null = 'project@example.com') {
+  const pr = await placedHold();
+  await db.update(projects).set({ payoutReceiver: receiver }).where(eq(projects.id, pr.projectId));
+  await onIssueComment(deps, say('!forfeit copied spam'));
+  const ends = (await holdRow(pr.id)).appealEndsAt!;
+  await runDue(hold, new Date(ends.getTime() + 1000));
+  return { pr, capturedAt: (await holdRow(pr.id)).capturedAt! };
+}
+
+describe('a payout', () => {
+  it('waits out the reversal window, then pays the project once', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await runDue(hold, new Date(capturedAt.getTime() + DAY - 1000));
+    expect(paypal.payouts).toEqual([]);
+
+    const after = new Date(capturedAt.getTime() + DAY + 1000);
+    await runDue(hold, after);
+    await runDue(hold, after);
+    expect(paypal.payouts).toHaveLength(1);
+    expect(paypal.payouts[0]).toMatchObject({ cents: 500, receiver: 'project@example.com' });
+    const row = await holdRow(pr.id);
+    expect(row.state).toBe('paid_out');
+    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured', 'paid_out']);
+    expect(github.lastCheck?.title).toBe('Paid out to the project');
+  });
+
+  it('never pays out a capture reversed in the window', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await onIssueComment(deps, say('!reverse the appeal was right'));
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    expect(paypal.payouts).toEqual([]);
+    expect((await holdRow(pr.id)).state).toBe('refunded');
+  });
+
+  it('refuses a reversal after the payout', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await runDue(hold, new Date(capturedAt.getTime() + DAY + 1000));
+    await onIssueComment(deps, say('!reverse too late'));
+    expect((await holdRow(pr.id)).state).toBe('paid_out');
+    expect(paypal.calls.some((c) => c.startsWith('refund'))).toBe(false);
+    expect(github.comments.at(-1)).toContain('nothing changed');
+  });
+
+  it('holds the money when no receiver is set', async () => {
+    const { pr, capturedAt } = await capturedHold(null);
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    expect(paypal.payouts).toEqual([]);
+    expect((await holdRow(pr.id)).state).toBe('captured');
+  });
+
+  it('stops retrying and says so when PayPal refuses the payout', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    paypal.payoutError = new PayPalError('payout', 422, 'RECEIVER_UNREGISTERED', 'debug');
+    const after = new Date(capturedAt.getTime() + DAY + 1000);
+    await runDue(hold, after);
+    await runDue(hold, after);
+    expect(paypal.calls.filter((c) => c.startsWith('payout'))).toHaveLength(1);
+    expect((await holdRow(pr.id)).state).toBe('captured');
+    expect(github.comments.at(-1)).toContain('could not pay out');
+  });
+
+  it('confirms the row on the success webhook and reports a failure', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await runDue(hold, new Date(capturedAt.getTime() + DAY + 1000));
+    const batch = (await holdRow(pr.id)).payoutBatchId!;
+    await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.SUCCEEDED', { payout_batch_id: batch }));
+    const [row] = await db.select().from(ledgerEvents).where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'paid_out')));
+    expect(row!.reconciledAt).not.toBeNull();
+
+    await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.UNCLAIMED', { payout_batch_id: batch }));
+    expect(github.comments.at(-1)).toContain('could not pay out');
+  });
+});
+
+describe('Transaction Search', () => {
+  it('marks only what PayPal lists', async () => {
+    const { pr } = await capturedHold();
+    const captureId = (await holdRow(pr.id)).captureId!;
+    await reconcile(hold);
+    const before = await db.select().from(ledgerEvents).where(eq(ledgerEvents.kind, 'captured'));
+    expect(before[0]!.searchedAt).toBeNull();
+
+    paypal.searchResults = [captureId];
+    await reconcile(hold);
+    const after = await db.select().from(ledgerEvents).where(eq(ledgerEvents.kind, 'captured'));
+    expect(after[0]!.searchedAt).not.toBeNull();
   });
 });
 

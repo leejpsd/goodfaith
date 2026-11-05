@@ -1,4 +1,4 @@
-import { toPayPalValue } from './hold';
+import { PAYOUT_AFTER_DAYS, toPayPalValue } from './hold';
 import type { Triage } from './triage/triage';
 
 export function gateComment(input: { login: string; holdUrl: string; minCents: number; maxCents: number }): string {
@@ -42,7 +42,11 @@ export const appealComment = (login: string) =>
 export const upheldComment = (by: string) => `@${by} upheld the forfeit, so the hold is being captured.`;
 
 export const capturedComment = (input: { login: string; cents: number; by: string | null }) =>
-  `The ${money(input.cents)} hold from @${input.login} was captured${input.by ? `, following the forfeit by @${input.by}` : ''}. A maintainer can still reverse this with \`!reverse <reason>\`.`;
+  `The ${money(input.cents)} hold from @${input.login} was captured${input.by ? `, following the forfeit by @${input.by}` : ''}. A maintainer can reverse this with \`!reverse <reason>\` for ${PAYOUT_AFTER_DAYS} day. After that it is paid out to the project, and a payout is final.`;
+
+export const paidOutComment = (cents: number) => `The captured ${money(cents)} was paid out to the project through PayPal.`;
+
+export const payoutFailedComment = (cents: number) => `PayPal could not pay out the captured ${money(cents)}. The money did not reach the project, and an operator needs to look at it.`;
 
 export const captureFailedComment = (cents: number) =>
   `PayPal refused to capture the ${money(cents)} hold, so no money moved. The hold stays open until it is released.`;
@@ -89,4 +93,5 @@ export const CHECK = {
   forfeitPending: { status: 'completed', conclusion: 'neutral', title: 'Forfeit pending', summary: 'No money has moved. The contributor can appeal.' },
   captured: { status: 'completed', conclusion: 'neutral', title: 'Hold captured', summary: 'A maintainer can reverse this.' },
   refunded: { status: 'completed', conclusion: 'success', title: 'Capture refunded', summary: 'The contributor was repaid in full.' },
+  paidOut: { status: 'completed', conclusion: 'neutral', title: 'Paid out to the project', summary: 'The forfeit is final.' },
 } as const;

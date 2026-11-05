@@ -11,15 +11,18 @@ export const REAUTHORIZE_FROM_DAYS = 4;
 export const VOID_BEFORE_EXPIRY_DAYS = 1;
 // With less than this left before that point, a forfeit is refused and the hold just voids.
 export const MIN_APPEAL_MS = DAY;
+// A capture stays reversible this long. After that it is paid out, and a payout is final.
+export const PAYOUT_AFTER_DAYS = 1;
 
-export type HoldState = 'held' | 'forfeit_pending' | 'appealed' | 'captured' | 'voided' | 'refunded';
-export type Effect = 'void' | 'reauthorize' | 'capture' | 'refund';
+export type HoldState = 'held' | 'forfeit_pending' | 'appealed' | 'captured' | 'paid_out' | 'voided' | 'refunded';
+export type Effect = 'void' | 'reauthorize' | 'capture' | 'refund' | 'payout';
 
 export interface Hold {
   state: HoldState;
   authorizedAt: Date;
   reauthorized: boolean;
   appealEndsAt?: Date;
+  capturedAt?: Date;
 }
 
 export type HoldEvent =
@@ -80,6 +83,9 @@ export function decide(hold: Hold, event: HoldEvent): Decision {
 
 // What the clock requires now. Run on a schedule, so it must be safe to repeat.
 export function dueEffects(hold: Hold, now: Date): Decision | null {
+  if (hold.state === 'captured' && hold.capturedAt && now.getTime() - hold.capturedAt.getTime() >= PAYOUT_AFTER_DAYS * DAY) {
+    return { next: { ...hold, state: 'paid_out' }, effects: ['payout'] };
+  }
   if (hold.state === 'forfeit_pending' && hold.appealEndsAt && now >= hold.appealEndsAt) {
     const age = now.getTime() - hold.authorizedAt.getTime();
     const refresh = !hold.reauthorized && age >= REAUTHORIZE_FROM_DAYS * DAY;
@@ -100,7 +106,7 @@ export function dueEffects(hold: Hold, now: Date): Decision | null {
 const FINAL: Record<'voided' | 'captured' | 'refunded', readonly HoldState[]> = {
   voided: ['held', 'forfeit_pending', 'appealed', 'voided'],
   captured: ['held', 'forfeit_pending', 'appealed', 'captured'],
-  refunded: ['captured', 'refunded'],
+  refunded: ['captured', 'paid_out', 'refunded'],
 };
 
 export function applyConfirmed(hold: Hold, confirmed: keyof typeof FINAL): Hold {

@@ -15,6 +15,13 @@
       "when": 1793859007940,
       "tag": "0001_head_sha",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793868378083,
+      "tag": "0002_payouts",
+      "breakpoints": true
     }
   ]
 }

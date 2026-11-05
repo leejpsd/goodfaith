@@ -18,6 +18,8 @@ export const projects = pgTable(
     maxCents: integer('max_cents').notNull().default(2500),
     defaultCents: integer('default_cents').notNull().default(500),
     appealDays: integer('appeal_days').notNull().default(7),
+    // With none set, a capture stays in the operator's account and is never paid out.
+    payoutReceiver: text('payout_receiver'),
     createdAt: createdAt(),
   },
   (t) => [unique('projects_owner_repo').on(t.owner, t.repo)],
@@ -75,7 +77,9 @@ export const holds = pgTable('holds', {
   reauthorized: boolean('reauthorized').notNull().default(false),
   appealEndsAt: timestamp('appeal_ends_at', { withTimezone: true }),
   captureId: text('capture_id'),
+  capturedAt: timestamp('captured_at', { withTimezone: true }),
   refundId: text('refund_id'),
+  payoutBatchId: text('payout_batch_id'),
   forfeitedBy: text('forfeited_by'),
   forfeitReason: text('forfeit_reason'),
   appealReason: text('appeal_reason'),
@@ -99,6 +103,8 @@ export const ledgerEvents = pgTable(
     actor: text('actor'),
     note: text('note'),
     reconciledAt: timestamp('reconciled_at', { withTimezone: true }),
+    // Found in PayPal's Transaction Search, which lags by up to three hours.
+    searchedAt: timestamp('searched_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index('ledger_events_created_at').on(t.createdAt)],

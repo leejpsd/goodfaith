@@ -11,6 +11,7 @@ export type CheckState =
 // What the gate needs from GitHub. Tests replace this with a fake.
 export interface GitHub {
   vouchFile(owner: string, repo: string): Promise<string | null>;
+  settingsFile(owner: string, repo: string): Promise<string | null>;
   permission(owner: string, repo: string, login: string): Promise<Permission>;
   comment(owner: string, repo: string, number: number, body: string): Promise<number>;
   createCheck(owner: string, repo: string, sha: string, state: CheckState): Promise<number>;
@@ -70,6 +71,12 @@ export function githubFor(installationId: number): GitHub {
     if (!r.ok) throw new Error(`GitHub ${method} ${path} returned ${r.status}`);
     return (await r.json()) as T;
   }
+  async function rawFile(owner: string, repo: string, path: string): Promise<string | null> {
+    const r = await call('GET', `/repos/${owner}/${repo}/contents/${path}`, undefined, 'application/vnd.github.raw+json');
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`GitHub ${path} returned ${r.status}`);
+    return r.text();
+  }
   const checkBody = (state: CheckState) => ({
     status: state.status,
     ...(state.status === 'completed' ? { conclusion: state.conclusion } : {}),
@@ -77,12 +84,8 @@ export function githubFor(installationId: number): GitHub {
   });
 
   return {
-    async vouchFile(owner, repo) {
-      const r = await call('GET', `/repos/${owner}/${repo}/contents/.github/VOUCHED.td`, undefined, 'application/vnd.github.raw+json');
-      if (r.status === 404) return null;
-      if (!r.ok) throw new Error(`GitHub vouch file returned ${r.status}`);
-      return r.text();
-    },
+    vouchFile: (owner, repo) => rawFile(owner, repo, '.github/VOUCHED.td'),
+    settingsFile: (owner, repo) => rawFile(owner, repo, '.github/goodfaith.json'),
     async permission(owner, repo, login) {
       const j = await json<{ permission: Permission }>('GET', `/repos/${owner}/${repo}/collaborators/${login}/permission`);
       return j.permission;

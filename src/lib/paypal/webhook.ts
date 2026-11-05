@@ -10,6 +10,7 @@ export const paypalEvent = z.object({
       id: z.string().optional(),
       links: z.array(link).optional(),
       supplementary_data: z.object({ related_ids: z.object({ authorization_id: z.string().optional() }).optional() }).optional(),
+      payout_batch_id: z.string().optional(),
     })
     .loose(),
 });
@@ -44,4 +45,15 @@ export function readConfirmation(event: PayPalEvent): Confirmation | null {
     default:
       return null;
   }
+}
+
+const PAYOUT_FAILED = new Set(['FAILED', 'BLOCKED', 'DENIED', 'RETURNED', 'REFUNDED', 'REVERSED', 'UNCLAIMED', 'CANCELED']);
+
+// Payouts report per item. Anything but success leaves the money outside the receiver's account.
+export function readPayout(event: PayPalEvent): { batchId: string; outcome: 'succeeded' | 'failed' } | null {
+  const match = event.event_type.match(/^PAYMENT\.PAYOUTS-ITEM\.([A-Z]+)$/);
+  const batchId = event.resource.payout_batch_id;
+  if (!match?.[1] || !batchId) return null;
+  if (match[1] === 'SUCCEEDED') return { batchId, outcome: 'succeeded' };
+  return PAYOUT_FAILED.has(match[1]) ? { batchId, outcome: 'failed' } : null;
 }

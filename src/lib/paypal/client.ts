@@ -35,6 +35,8 @@ export interface PayPal {
   reauthorize(authorizationId: string, cents: number, requestId: string): Promise<string>;
   capture(authorizationId: string, cents: number, requestId: string): Promise<{ captureId: string; status: string }>;
   refund(captureId: string, requestId: string): Promise<string>;
+  payout(input: { cents: number; receiver: string; note: string; senderId: string }, requestId: string): Promise<string>;
+  searchTransactions(start: Date, end: Date): Promise<string[]>;
   verifyWebhook(headers: WebhookHeaders, rawBody: string): Promise<boolean>;
 }
 
@@ -76,6 +78,12 @@ function parseError(text: string): ErrorBody {
   } catch {
     return {};
   }
+}
+
+async function read<T>(operation: string, path: string): Promise<T> {
+  const r = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${await accessToken()}` }, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new PayPalError(operation, r.status, undefined, r.headers.get('paypal-debug-id') ?? undefined);
+  return (await r.json()) as T;
 }
 
 async function call<T>(operation: string, path: string, body: string | undefined, requestId: string): Promise<T> {
@@ -159,6 +167,27 @@ export function paypalClient(): PayPal {
     },
     async refund(captureId, requestId) {
       return (await call<{ id: string }>('refund', `/v2/payments/captures/${captureId}/refund`, undefined, requestId)).id;
+    },
+    async payout({ cents, receiver, note, senderId }, requestId) {
+      const j = await call<{ batch_header: { payout_batch_id: string } }>(
+        'payout',
+        '/v1/payments/payouts',
+        JSON.stringify({
+          sender_batch_header: { sender_batch_id: senderId, email_subject: 'A forfeited Goodfaith hold', email_message: note },
+          items: [{ recipient_type: 'EMAIL', amount: { value: (cents / 100).toFixed(2), currency: 'USD' }, receiver, note, sender_item_id: senderId }],
+        }),
+        requestId,
+      );
+      return j.batch_header.payout_batch_id;
+    },
+    // One page of 500 is plenty for this demo's volume, and each run looks at a short range.
+    async searchTransactions(start, end) {
+      const range = `start_date=${start.toISOString().slice(0, 19)}Z&end_date=${end.toISOString().slice(0, 19)}Z`;
+      const j = await read<{ transaction_details?: { transaction_info: { transaction_id: string } }[] }>(
+        'transaction search',
+        `/v1/reporting/transactions?${range}&fields=transaction_info&page_size=500`,
+      );
+      return (j.transaction_details ?? []).map((t) => t.transaction_info.transaction_id);
     },
     async verifyWebhook(headers, rawBody) {
       const webhookId = process.env.PAYPAL_WEBHOOK_ID;

@@ -115,6 +115,14 @@ function Placed({ hold, prUrl }: { hold: typeof holds.$inferSelect; prUrl: strin
           <p className="muted">PayPal capture {hold.captureId}</p>
         </section>
       );
+    case 'paid_out':
+      return (
+        <section className="card">
+          <h2>Your {amount} hold was captured and paid out to the project</h2>
+          <p>Reason given: {hold.forfeitReason ?? 'none recorded'}</p>
+          <p className="muted">PayPal capture {hold.captureId}, payout batch {hold.payoutBatchId}</p>
+        </section>
+      );
     case 'voided':
       return (
         <section className="card">

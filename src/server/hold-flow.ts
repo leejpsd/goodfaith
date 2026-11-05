@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { holds, ledgerEvents, projects, pullRequests, type LedgerKind } from '@/db/schema';
 import type { Command } from '@/lib/commands';
 import type { CheckState } from '@/lib/github/client';
@@ -6,6 +6,8 @@ import { applyConfirmed, decide, dueEffects, holdCents, type Effect, type Hold, 
 import {
   appealComment,
   capturedComment,
+  paidOutComment,
+  payoutFailedComment,
   captureFailedComment,
   changedOnPayPalComment,
   CHECK,
@@ -18,7 +20,7 @@ import {
   upheldComment,
 } from '@/lib/messages';
 import { PayPalError } from '@/lib/paypal/client';
-import { readConfirmation, type PayPalEvent } from '@/lib/paypal/webhook';
+import { readConfirmation, readPayout, type PayPalEvent } from '@/lib/paypal/webhook';
 import { bandCents } from '@/lib/triage/triage';
 import type { HoldDeps } from './deps';
 
@@ -32,7 +34,7 @@ const OPEN = ['held', 'forfeit_pending', 'appealed'] as const;
 
 function toHold(row: HoldRow): Hold | null {
   if (row.state === 'awaiting_approval' || !row.authorizedAt) return null;
-  return { state: row.state, authorizedAt: row.authorizedAt, reauthorized: row.reauthorized, appealEndsAt: row.appealEndsAt ?? undefined };
+  return { state: row.state, authorizedAt: row.authorizedAt, reauthorized: row.reauthorized, appealEndsAt: row.appealEndsAt ?? undefined, capturedAt: row.capturedAt ?? undefined };
 }
 
 async function scopeOf(deps: HoldDeps, pullRequestId: string): Promise<Scope | null> {
@@ -136,8 +138,8 @@ export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId
   return { ok: true };
 }
 
-async function runEffects(deps: HoldDeps, row: HoldRow, effects: Effect[]) {
-  const result: { captureId?: string; refundId?: string } = {};
+async function runEffects(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, effects: Effect[]) {
+  const result: { captureId?: string; capturedAt?: Date; refundId?: string; payoutBatchId?: string } = {};
   let authorizationId = row.authorizationId!;
   for (const effect of effects) {
     switch (effect) {
@@ -153,10 +155,22 @@ async function runEffects(deps: HoldDeps, row: HoldRow, effects: Effect[]) {
         const capture = await deps.paypal.capture(authorizationId, row.cents, `hold-${row.id}-capture-${authorizationId}`);
         if (capture.status === 'DECLINED' || capture.status === 'FAILED') throw new PayPalError('capture', 422, capture.status, undefined);
         result.captureId = capture.captureId;
+        result.capturedAt = new Date();
         break;
       }
       case 'refund':
         result.refundId = await deps.paypal.refund(row.captureId!, `hold-${row.id}-refund-${row.captureId}`);
+        break;
+      case 'payout':
+        result.payoutBatchId = await deps.paypal.payout(
+          {
+            cents: row.cents,
+            receiver: project.payoutReceiver!,
+            note: `Forfeited hold on ${project.owner}/${project.repo} pull request #${pr.number}`,
+            senderId: `hold-${row.id}`,
+          },
+          `hold-${row.id}-payout`,
+        );
         break;
     }
   }
@@ -165,8 +179,8 @@ async function runEffects(deps: HoldDeps, row: HoldRow, effects: Effect[]) {
 
 // Runs the effects, then stores the next state only if nothing else moved the hold first.
 // Returns null when something did, so the caller adds no second ledger row or comment.
-async function settle(deps: HoldDeps, row: HoldRow, next: Hold, effects: Effect[], extra: Partial<HoldRow> = {}): Promise<HoldRow | null> {
-  const result = await runEffects(deps, row, effects);
+async function settle(deps: HoldDeps, scope: Scope, row: HoldRow, next: Hold, effects: Effect[], extra: Partial<HoldRow> = {}): Promise<HoldRow | null> {
+  const result = await runEffects(deps, scope, row, effects);
   const [saved] = await deps.db
     .update(holds)
     .set({ state: next.state, appealEndsAt: next.appealEndsAt ?? null, reauthorized: next.reauthorized, updatedAt: new Date(), ...extra, ...result })
@@ -181,7 +195,7 @@ async function release(deps: HoldDeps, scope: Scope, event: HoldEvent, actor: st
   if (!row || !hold) return;
   const decision = decide(hold, event);
   if ('refused' in decision) return;
-  const saved = await settle(deps, row, decision.next, decision.effects);
+  const saved = await settle(deps, scope, row, decision.next, decision.effects);
   if (!saved) return;
   await record(deps, scope, saved, 'voided', { paypalId: saved.authorizationId, actor, note });
   await tell(deps, scope, { check: CHECK.released, comment: releasedComment(scope.pr.authorLogin, saved.cents, because) });
@@ -216,7 +230,7 @@ export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclu
   const login = scope.pr.authorLogin;
   switch (command.name) {
     case 'forfeit': {
-      const saved = await settle(deps, row, decision.next, decision.effects, { forfeitedBy: actor, forfeitReason: command.reason });
+      const saved = await settle(deps, scope, row, decision.next, decision.effects, { forfeitedBy: actor, forfeitReason: command.reason });
       if (!saved) return;
       await record(deps, scope, saved, 'forfeit_opened', { paypalId: saved.authorizationId, actor, note: command.reason });
       await tell(deps, scope, {
@@ -226,21 +240,21 @@ export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclu
       return;
     }
     case 'appeal': {
-      const saved = await settle(deps, row, decision.next, decision.effects, { appealReason: command.reason });
+      const saved = await settle(deps, scope, row, decision.next, decision.effects, { appealReason: command.reason });
       if (!saved) return;
       await record(deps, scope, saved, 'appealed', { paypalId: saved.authorizationId, actor, note: command.reason });
       await tell(deps, scope, { comment: appealComment(actor) });
       return;
     }
     case 'release': {
-      const saved = await settle(deps, row, decision.next, decision.effects);
+      const saved = await settle(deps, scope, row, decision.next, decision.effects);
       if (!saved) return;
       await record(deps, scope, saved, 'voided', { paypalId: saved.authorizationId, actor, note: 'released by a maintainer' });
       await tell(deps, scope, { check: CHECK.released, comment: releasedComment(login, saved.cents, `@${actor} released it`) });
       return;
     }
     case 'uphold': {
-      const saved = await settle(deps, row, decision.next, decision.effects);
+      const saved = await settle(deps, scope, row, decision.next, decision.effects);
       if (!saved) return;
       await record(deps, scope, saved, 'forfeit_opened', { paypalId: saved.authorizationId, actor, note: 'appeal answered: upheld' });
       await tell(deps, scope, { comment: upheldComment(actor) });
@@ -249,7 +263,7 @@ export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclu
       return;
     }
     case 'reverse': {
-      const saved = await settle(deps, row, decision.next, decision.effects);
+      const saved = await settle(deps, scope, row, decision.next, decision.effects);
       if (!saved) return;
       await record(deps, scope, saved, 'refunded', { paypalId: saved.refundId, actor, note: command.reason });
       await tell(deps, scope, { check: CHECK.refunded, comment: refundedComment(login, saved.cents) });
@@ -263,11 +277,20 @@ async function settleDue(deps: HoldDeps, scope: Scope, row: HoldRow, now: Date):
   const decision = hold && dueEffects(hold, now);
   if (!decision || 'refused' in decision) return;
   const capturing = decision.effects.includes('capture');
+  const payingOut = decision.effects.includes('payout');
+  // With no receiver set, the capture stays where it is and can still be reversed.
+  if (payingOut && !scope.project.payoutReceiver) return;
 
   let saved: HoldRow | null;
   try {
-    saved = await settle(deps, row, decision.next, decision.effects);
+    saved = await settle(deps, scope, row, decision.next, decision.effects);
   } catch (error) {
+    if (error instanceof PayPalError && !error.retryable && payingOut) {
+      // Stops the retries. The hold stays captured and reversible, and a person has to look.
+      await deps.db.update(holds).set({ capturedAt: null, updatedAt: new Date() }).where(eq(holds.id, row.id));
+      await tell(deps, scope, { comment: payoutFailedComment(row.cents) });
+      return;
+    }
     if (!capturing || !(error instanceof PayPalError) || error.retryable) throw error;
     // Clearing the time stops the retries. The hold stays open, and the void deadline or a
     // maintainer's release still ends it, so a refused capture never strands the money.
@@ -277,7 +300,10 @@ async function settleDue(deps: HoldDeps, scope: Scope, row: HoldRow, now: Date):
   }
   if (!saved) return;
 
-  if (capturing) {
+  if (payingOut) {
+    await record(deps, scope, saved, 'paid_out', { paypalId: saved.payoutBatchId, note: scope.project.payoutReceiver ?? undefined });
+    await tell(deps, scope, { check: CHECK.paidOut, comment: paidOutComment(saved.cents) });
+  } else if (capturing) {
     await record(deps, scope, saved, 'captured', { paypalId: saved.captureId, actor: saved.forfeitedBy, note: saved.forfeitReason ?? undefined });
     await tell(deps, scope, { check: CHECK.captured, comment: capturedComment({ login: scope.pr.authorLogin, cents: saved.cents, by: saved.forfeitedBy }) });
   } else {
@@ -294,7 +320,7 @@ export async function runDue(deps: HoldDeps, now = new Date()): Promise<void> {
     .from(holds)
     .innerJoin(pullRequests, eq(holds.pullRequestId, pullRequests.id))
     .innerJoin(projects, eq(pullRequests.projectId, projects.id))
-    .where(inArray(holds.state, [...OPEN]));
+    .where(inArray(holds.state, [...OPEN, 'captured']));
   for (const { hold, pr, project } of rows) {
     try {
       await settleDue(deps, { pr, project }, hold, now);
@@ -304,7 +330,35 @@ export async function runDue(deps: HoldDeps, now = new Date()): Promise<void> {
   }
 }
 
+// PayPal's Transaction Search lags by up to three hours, so this looks back over two days
+// and marks only what it can see. Only captures and refunds have an ID it reports.
+export async function reconcile(deps: HoldDeps, now = new Date()): Promise<void> {
+  const open = await deps.db
+    .select({ id: ledgerEvents.id, paypalId: ledgerEvents.paypalId })
+    .from(ledgerEvents)
+    .where(and(inArray(ledgerEvents.kind, ['captured', 'refunded']), isNull(ledgerEvents.searchedAt), isNotNull(ledgerEvents.paypalId)));
+  if (!open.length) return;
+  const seen = new Set(await deps.paypal.searchTransactions(new Date(now.getTime() - 2 * 864e5), now));
+  const found = open.filter((row) => seen.has(row.paypalId!)).map((row) => row.id);
+  if (found.length) await deps.db.update(ledgerEvents).set({ searchedAt: now }).where(inArray(ledgerEvents.id, found));
+}
+
 const KIND = { voided: 'voided', captured: 'captured', refunded: 'refunded' } as const;
+
+async function onPayoutEvent(deps: HoldDeps, payout: NonNullable<ReturnType<typeof readPayout>>) {
+  const [found] = await deps.db
+    .select({ hold: holds, pr: pullRequests, project: projects })
+    .from(holds)
+    .innerJoin(pullRequests, eq(holds.pullRequestId, pullRequests.id))
+    .innerJoin(projects, eq(pullRequests.projectId, projects.id))
+    .where(eq(holds.payoutBatchId, payout.batchId));
+  if (!found) return;
+  if (payout.outcome === 'succeeded') {
+    await deps.db.update(ledgerEvents).set({ reconciledAt: new Date() }).where(and(eq(ledgerEvents.holdId, found.hold.id), eq(ledgerEvents.kind, 'paid_out')));
+  } else {
+    await tell(deps, { pr: found.pr, project: found.project }, { comment: payoutFailedComment(found.hold.cents) });
+  }
+}
 
 export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise<void> {
   // The hold is already recorded by the time PayPal reports it, so this only confirms the row.
@@ -313,6 +367,12 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
     if (held) {
       await deps.db.update(ledgerEvents).set({ reconciledAt: new Date() }).where(and(eq(ledgerEvents.holdId, held.id), eq(ledgerEvents.kind, 'held')));
     }
+    return;
+  }
+
+  const payout = readPayout(event);
+  if (payout) {
+    await onPayoutEvent(deps, payout);
     return;
   }
 

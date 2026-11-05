@@ -34,6 +34,7 @@ class FakeGitHub implements GitHub {
   association = 'FIRST_TIME_CONTRIBUTOR';
   next = 1;
   vouchFile = async () => null;
+  settingsFile = async () => null;
   permission = async () => 'none' as const;
   comment = async (_o: string, _r: string, _n: number, body: string) => {
     this.comments.push(body);
