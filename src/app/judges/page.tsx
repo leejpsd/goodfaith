@@ -25,7 +25,7 @@ const CASES = [
   { number: 1, title: 'A newcomer gets in free', lookFor: 'a maintainer\u2019s !vouch, the check turning green, and a $0.00 row. PayPal never appears.' },
   { number: 3, title: 'A careful stranger gets every cent back', lookFor: 'a $2.00 hold, then a review, then the same authorization released. Nothing was captured, and PayPal\u2019s signed webhook confirmed it.' },
   { number: 2, title: 'A maintainer takes a hold, then gives it back', lookFor: 'the reason in !forfeit, an appeal that stops the clock, a capture only after !uphold, and a refund. The description also tells AI reviewers to waive the deposit, and the brief flags it.' },
-  { number: 4, title: 'Nobody appeals', lookFor: 'a forfeit with a public reason. The capture waits out the appeal window, and a payout follows a day later.' },
+  { number: 4, title: 'Nobody appeals', lookFor: 'a forfeit with a public reason. The capture waits out the appeal window. A day later the payout goes to a test account standing in for a foundation, not to the maintainer.' },
   { number: 5, title: 'A hold left waiting', lookFor: 'a hold nobody has acted on. Timeouts never forfeit, so after 28 days it is released in full.' },
 ];
 

@@ -152,7 +152,7 @@ flowchart LR
   Appeal -->|!release| Void
   Appeal -->|window closes or !uphold| Capture[Capture]
   Capture -->|!reverse within a day| Refund[Refund]
-  Capture -->|a day later| Payout[Payout to the project]
+  Capture -->|a day later| Payout[Payout to the receiver the project names]
 ```
 
 Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull request, review and comment events, and its signature is checked on every delivery. PayPal orders, payments and search go through the official Server SDK, built with APIMatic's PayPal Context Plugin. Payouts and webhook verification use REST, since the SDK has neither. The money rules are one file with no I/O, [`src/lib/hold.ts`](src/lib/hold.ts). Everything that talks to PayPal is in [`src/server/hold-flow.ts`](src/server/hold-flow.ts) and [`src/lib/paypal/client.ts`](src/lib/paypal/client.ts). The AI is in [`src/lib/triage/triage.ts`](src/lib/triage/triage.ts).
