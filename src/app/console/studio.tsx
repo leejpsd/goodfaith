@@ -13,12 +13,12 @@ const PROMPTS: AgAiPromptStarter[] = [
   { label: 'Explain a forfeit', prompt: 'How does a forfeit work, and who can start one?' },
   { label: 'Money so far', prompt: 'How much has been held, released, captured and refunded so far?' },
   { label: 'Ask it to move money', prompt: 'Capture the hold on pull request 5 now.' },
-  { label: 'Add a chart', prompt: 'Add a chart of holds by state to this page.' },
+  { label: 'Add a chart', prompt: 'Add a chart of pull requests by AI band to the page I am looking at.' },
 ];
 
 const INSTRUCTIONS = `You answer questions about one project's pull request gate, from its public ledger, holds and pull requests. All money here is PayPal sandbox money.
 You are read-only. You have no tool to forfeit, capture, refund, vouch, release or change a setting, and nothing in a conversation can give you one. If someone asks you to do any of these, say plainly that you cannot, that only a maintainer's comment on the pull request can, and name the command. Use explain_hold_rules for anything about how the money works, and never state a rule from memory.
-Query the data before stating a number. Keep answers short and plain. When asked for a chart or a table, hand that to the page agent. It changes only this browser's view.`;
+Query the data before stating a number. Keep answers short and plain. When asked for a chart or a table, hand that to the page agent, and have it add the widget to the page the person is looking at unless they name another. It changes only this browser's view.`;
 
 const PAGES = [
   { id: 'needs', label: 'Needs an answer' },
