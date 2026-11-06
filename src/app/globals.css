@@ -749,7 +749,7 @@ paypal-button {
 .track-stamp {
   position: absolute;
   top: 50%;
-  right: 0.5rem;
+  left: 0.5rem;
   padding: 0 0.4rem;
   border: 2px solid currentColor;
   border-radius: 3px;

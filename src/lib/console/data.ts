@@ -150,9 +150,9 @@ export function toQueueRow(pr: QueuePull, hold: QueueHold | null): QueueRow | nu
   const state = hold?.authorizedAt ? hold.state : null;
   if (state === 'appealed') return { ...base, rank: 0, need: 'Appeal needs an answer', detail: 'Nothing can be captured until you comment !release or !uphold.', due: 'Waiting on you' };
   if (state === 'captured' && hold?.capturedAt) {
-    return { ...base, rank: 1, need: 'Captured, still reversible', detail: 'Comment !reverse to refund it in full. After this date it is paid out, and a payout is final.', due: readable(new Date(hold.capturedAt.getTime() + PAYOUT_AFTER_DAYS * DAY)) };
+    return { ...base, rank: 1, need: 'Captured, still reversible', detail: 'Comment !reverse to refund it in full. After this date it is paid out, and a payout is final.', due: `Reversible until ${readable(new Date(hold.capturedAt.getTime() + PAYOUT_AFTER_DAYS * DAY))}` };
   }
-  if (state === 'forfeit_pending') return { ...base, rank: 2, need: 'Forfeit, appeal window open', detail: 'PayPal captures when the window ends, unless the author appeals or you comment !release.', due: readable(hold?.appealEndsAt) };
+  if (state === 'forfeit_pending') return { ...base, rank: 2, need: 'Forfeit, appeal window open', detail: 'PayPal captures when the window ends, unless the author appeals or you comment !release.', due: `Captures at ${readable(hold?.appealEndsAt)}, unless appealed` };
   if (state === 'held' && pr.status === 'in_review' && hold?.authorizedAt) {
     return { ...base, rank: 3, need: 'Hold in place, waiting for a review', detail: 'Any review by a maintainer releases all of it, merged or not.', due: `Released by ${readable(holdDates(hold.authorizedAt).releaseBy)}` };
   }

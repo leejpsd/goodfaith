@@ -55,8 +55,8 @@ describe('toQueueRow', () => {
   });
 
   it('gives the deadline that matters', () => {
-    expect(toQueueRow(pr, hold('captured', { capturedAt: new Date('2026-11-03T00:00:00.000Z') }))?.due).toBe('2026-11-04 00:00 UTC');
-    expect(toQueueRow(pr, hold('forfeit_pending', { appealEndsAt: new Date('2026-11-02T00:00:00.000Z') }))?.due).toBe('2026-11-02 00:00 UTC');
+    expect(toQueueRow(pr, hold('captured', { capturedAt: new Date('2026-11-03T00:00:00.000Z') }))?.due).toBe('Reversible until 2026-11-04 00:00 UTC');
+    expect(toQueueRow(pr, hold('forfeit_pending', { appealEndsAt: new Date('2026-11-02T00:00:00.000Z') }))?.due).toBe('Captures at 2026-11-02 00:00 UTC, unless appealed');
     expect(toQueueRow(pr, hold('held'))?.due).toBe('Released by 2026-11-29 00:00 UTC');
   });
 
