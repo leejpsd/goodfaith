@@ -288,6 +288,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           <button key={id} type="button" aria-current={page === id ? 'page' : undefined} onClick={() => open(id)}>{label}</button>
         ))}
         <p className="muted">Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.</p>
+        <p className="console-narrow">The console is laid out for a wider screen. On a phone, the <a href="/ledger">public ledger</a> has the same rows.</p>
       </nav>
       <AgStudio onApiReady={({ api }) => { studio.current = api as unknown as AgStudioApi; }} style={{ height: 'calc(100% - 2.75rem)', width: '100%' }} data={sources} initialState={INITIAL} widgets={widgets} theme={THEME} mode="edit" ai={ai} />
     </AgStudioProvider>

@@ -365,6 +365,11 @@ main.console {
   height: calc(100vh - 4.5rem);
   min-height: 34rem;
   padding: 0;
+  overflow-x: auto;
+}
+
+.console-narrow {
+  display: none;
 }
 
 .console-tabs {
@@ -659,11 +664,22 @@ paypal-button {
   .slip {
     transform: none;
   }
+
+  .console-narrow {
+    display: block;
+    flex-basis: 100%;
+    margin: 0.25rem 0 0.5rem;
+    font-size: 0.85rem;
+  }
 }
 
 .cases {
   display: grid;
   gap: 2.5rem;
+}
+
+.cases > article {
+  min-width: 0;
 }
 
 .cases h3 {
