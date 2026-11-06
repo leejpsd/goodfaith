@@ -20,6 +20,8 @@ So doors are closing. [Ladybird no longer accepts public pull requests](https://
 
 **What a closed door looks like.** Ghostty's bot closes a pull request within a minute when nobody has vouched for its author. We [replayed Ghostty's last 300 pull requests](https://goodfaith.onrender.com/replay/ghostty-org/ghostty), read-only, on 2026-11-06: 20 from newcomers were closed within an hour. With a hold, every one could have reached a reviewer, 13 of them for $5 or less, and the model put the riskiest at the maximum.
 
+It is not one project. In a [read-only survey of 260 popular repositories](evals/doors/RESULTS.md), bots closed 307 newcomers' pull requests within an hour of opening, at 23 projects: spam and slop detectors, a no-AI policy, an application to contribute, and process rules. The model would have sized 206 of them at $5 or less. It also misses tidy slop, so that is a reason for a maintainer to look, not proof the work was good.
+
 **Goodfaith is for a project that has closed, or is about to.** Against an open door, a hold is a toll. Against a closed one, it is more access than a stranger has today.
 
 ## An old idea that was missing a piece

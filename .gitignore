@@ -153,3 +153,4 @@ next-env.d.ts
 
 # Third-party pull request text. The published results link to it instead.
 evals/triage/data/
+evals/doors/data/
