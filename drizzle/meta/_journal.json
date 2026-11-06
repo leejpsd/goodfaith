@@ -57,6 +57,13 @@
       "when": 1793931847735,
       "tag": "0007_trust_earned",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793934565192,
+      "tag": "0008_first_hold_webhook",
+      "breakpoints": true
     }
   ]
 }

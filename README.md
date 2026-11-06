@@ -2,7 +2,7 @@
 
 A stranger's pull request reaches review in one of two ways: a maintainer vouches for them for free, or they place a refundable PayPal hold that a good-faith review releases. Only a maintainer's command can capture the money. No model can.
 
-- **For judges, five finished cases and what to look for:** https://goodfaith.onrender.com/judges
+- **For judges, six finished cases and what to look for:** https://goodfaith.onrender.com/judges
 - **Try it, with no login:** https://goodfaith.onrender.com/try opens a real pull request from a test account, and you play both sides
 - **Maintainer console, on AG Studio:** https://goodfaith.onrender.com/console
 - **Public ledger:** https://goodfaith.onrender.com/ledger
