@@ -207,7 +207,7 @@ npm run typecheck
 
 PayPal JS SDK v6, Orders v2, Payments v2, Payouts v1, Webhooks and Transaction Search, all on the sandbox, through the PayPal Server SDK where it has coverage. OpenAI `gpt-6-luna` with structured outputs. AG Studio. Next.js, React, TypeScript, Drizzle, Postgres and Render.
 
-This project was built with Claude Code, using PayPal's AI Toolkit references and APIMatic's PayPal Context Plugin, and commits it worked on carry a `Co-Authored-By` line. Pull requests from before the evaluation show `gpt-6.1-sol` in their bot comments, because the product moved to `gpt-6-luna` after the [comparison on the tuning set](evals/triage/RULES.md).
+This project was built with Claude Code, using PayPal's AI Toolkit references and APIMatic's PayPal Context Plugin ([what the plugin changed](docs/apimatic-context-plugin.md)), and commits it worked on carry a `Co-Authored-By` line. Pull requests from before the evaluation show `gpt-6.1-sol` in their bot comments, because the product moved to `gpt-6-luna` after the [comparison on the tuning set](evals/triage/RULES.md).
 
 ## License
 
