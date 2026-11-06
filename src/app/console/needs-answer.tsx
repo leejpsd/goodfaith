@@ -3,7 +3,7 @@
 import { AgLoadingOverlay } from 'ag-studio-react';
 import { useEffect, useState } from 'react';
 
-export const QUEUE_FIELDS = ['pr', 'title', 'url', 'rank', 'need', 'detail', 'due', 'amount', 'band', 'brief', 'flagged'] as const;
+export const QUEUE_FIELDS = ['pr', 'title', 'url', 'rank', 'dueAt', 'need', 'detail', 'due', 'amount', 'band', 'brief', 'flagged'] as const;
 type QueueField = (typeof QUEUE_FIELDS)[number];
 type MappedField = { id: string; key: string };
 
@@ -14,7 +14,7 @@ interface QueueParams {
   };
 }
 
-type Item = Record<QueueField, string> & { amountValue: number; rankValue: number };
+type Item = Record<QueueField, string> & { amountValue: number; rankValue: number; dueValue: number };
 
 // What a maintainer has to act on, with a link to each pull request and the AI's brief.
 // The second custom widget this project adds to AG Studio.
@@ -32,9 +32,9 @@ export function NeedsAnswer({ widgetApi, dataMapping }: QueueParams) {
         const read = (row: Record<string, unknown>, name: QueueField) => row[dataMapping[name]?.[0]?.key ?? name];
         const next = (response.results?.rows ?? []).map((row) => {
           const item = Object.fromEntries(QUEUE_FIELDS.map((name) => [name, String(read(row, name) ?? '')])) as Record<QueueField, string>;
-          return { ...item, amountValue: Number(read(row, 'amount')), rankValue: Number(read(row, 'rank')) };
+          return { ...item, amountValue: Number(read(row, 'amount')), rankValue: Number(read(row, 'rank')), dueValue: Number(read(row, 'dueAt')) };
         });
-        setItems(next.sort((a, b) => a.rankValue - b.rankValue || Number(b.pr) - Number(a.pr)));
+        setItems(next.sort((a, b) => a.rankValue - b.rankValue || a.dueValue - b.dueValue));
       });
     return () => {
       live = false;

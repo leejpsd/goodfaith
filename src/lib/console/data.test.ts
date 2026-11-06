@@ -50,7 +50,7 @@ describe('toQueueRow', () => {
   const hold = (state: string, extra: object = {}) => ({ state, cents: 2500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null, ...extra });
 
   it('puts an appeal first and a waiting pull request last', () => {
-    expect(toQueueRow(pr, hold('appealed'))?.rank).toBe(0);
+    expect(toQueueRow(pr, hold('appealed'))).toMatchObject({ rank: 0, dueAt: 0 });
     expect(toQueueRow({ ...pr, status: 'waiting' }, null)).toMatchObject({ rank: 4, amount: 0, need: 'Waiting at the gate' });
   });
 

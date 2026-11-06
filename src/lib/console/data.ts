@@ -85,6 +85,8 @@ export interface QueueRow {
   url: string;
   // Lower comes first: an appeal blocks money, and a reversible capture has a deadline.
   rank: number;
+  // When the deadline falls, for ordering within a rank. Waiting on a person sorts first.
+  dueAt: number;
   need: string;
   detail: string;
   due: string;
@@ -148,15 +150,16 @@ export function toQueueRow(pr: QueuePull, hold: QueueHold | null): QueueRow | nu
     flagged: pr.triage?.instructions_to_ai ? `Flagged: it addresses AI reviewers, "${pr.triage.instructions_to_ai}"` : '',
   };
   const state = hold?.authorizedAt ? hold.state : null;
-  if (state === 'appealed') return { ...base, rank: 0, need: 'Appeal needs an answer', detail: 'Nothing can be captured until you comment !release or !uphold.', due: 'Waiting on you' };
+  if (state === 'appealed') return { ...base, rank: 0, need: 'Appeal needs an answer', detail: 'Nothing can be captured until you comment !release or !uphold.', due: 'Waiting on you', dueAt: 0 };
   if (state === 'captured' && hold?.capturedAt) {
-    return { ...base, rank: 1, need: 'Captured, still reversible', detail: 'Comment !reverse to refund it in full. After this date it is paid out, and a payout is final.', due: `Reversible until ${readable(new Date(hold.capturedAt.getTime() + PAYOUT_AFTER_DAYS * DAY))}` };
+    const reversibleUntil = new Date(hold.capturedAt.getTime() + PAYOUT_AFTER_DAYS * DAY);
+    return { ...base, rank: 1, dueAt: reversibleUntil.getTime(), need: 'Captured, still reversible', detail: 'Comment !reverse to refund it in full. After this date it is paid out, and a payout is final.', due: `Reversible until ${readable(reversibleUntil)}` };
   }
-  if (state === 'forfeit_pending') return { ...base, rank: 2, need: 'Forfeit, appeal window open', detail: 'PayPal captures when the window ends, unless the author appeals or you comment !release.', due: `Captures at ${readable(hold?.appealEndsAt)}, unless appealed` };
+  if (state === 'forfeit_pending') return { ...base, rank: 2, dueAt: hold?.appealEndsAt?.getTime() ?? 0, need: 'Forfeit, appeal window open', detail: 'PayPal captures when the window ends, unless the author appeals or you comment !release.', due: `Captures at ${readable(hold?.appealEndsAt)}, unless appealed` };
   if (state === 'held' && pr.status === 'in_review' && hold?.authorizedAt) {
-    return { ...base, rank: 3, need: 'Hold in place, waiting for a review', detail: 'Any review by a maintainer releases all of it, merged or not.', due: `Released by ${readable(holdDates(hold.authorizedAt).releaseBy)}` };
+    return { ...base, rank: 3, dueAt: Date.parse(holdDates(hold.authorizedAt).releaseBy), need: 'Hold in place, waiting for a review', detail: 'Any review by a maintainer releases all of it, merged or not.', due: `Released by ${readable(holdDates(hold.authorizedAt).releaseBy)}` };
   }
-  if (pr.status === 'waiting') return { ...base, rank: 4, need: 'Waiting at the gate', detail: 'Comment !vouch to let them in free, or leave it for them to place a hold.', due: 'No deadline' };
+  if (pr.status === 'waiting') return { ...base, rank: 4, dueAt: Number.MAX_SAFE_INTEGER, need: 'Waiting at the gate', detail: 'Comment !vouch to let them in free, or leave it for them to place a hold.', due: 'No deadline' };
   return null;
 }
 

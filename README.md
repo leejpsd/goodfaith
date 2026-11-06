@@ -167,6 +167,8 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ![Every hold on one 28-day ruler, stamped with how it ended](docs/console-holds.png)
 
+![Asked to capture a hold, the assistant says it cannot: only a maintainer's public !forfeit can start one](docs/console-refusal.png)
+
 - **A custom widget.** The hold timeline puts each hold on a 28-day ruler, with PayPal's honor period, the appeal window and the capture. It reads through Studio's data mapping, so filters apply to it.
 - **Custom theming.** It uses the same paper, ink and stamp as the rest of the site.
 - **A custom agent on the Studio Agent Framework.** It answers from the ledger and the fixed rules, and hands dashboard work to Studio's built-in page and widget agents. Its model calls go through the app's own route, so the key stays on the server.

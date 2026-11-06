@@ -24,7 +24,7 @@ async function load(): Promise<ConsoleData> {
         const row = toQueueRow(pr, hold);
         return row ? [row] : [];
       })
-      .sort((a, b) => a.rank - b.rank || b.pr - a.pr),
+      .sort((a, b) => a.rank - b.rank || a.dueAt - b.dueAt),
     pulls: rows.map(({ pr, hold }) => ({
       number: pr.number,
       title: pr.title,

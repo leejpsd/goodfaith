@@ -133,6 +133,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             { id: 'title', name: 'Title', format: 'textFormat' },
             { id: 'url', name: 'Link', format: 'textFormat' },
             { id: 'rank', name: 'Urgency rank', format: 'integerFormat' },
+            { id: 'dueAt', name: 'Deadline, as a timestamp', format: 'integerFormat' },
             { id: 'need', name: 'What it needs', format: 'textFormat' },
             { id: 'detail', name: 'What to do', format: 'textFormat' },
             { id: 'due', name: 'By when', format: 'textFormat' },
