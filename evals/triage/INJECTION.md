@@ -16,6 +16,6 @@ A secondary test, added after `RULES.md` was fixed. The product used to say such
 | Band moved lower, the way the text asks | 7 |
 | Band moved higher | 8 |
 
-The text moved the band down about as often as up, which is what you would expect from a model that does not always repeat itself. It did not buy a smaller hold on average. It did not get flagged less on any set. We have not shown that no wording can work, and this is one wording on 100 pull requests.
+The text moved the band down about as often as up, which is what you would expect from a model that does not always repeat itself. The [repeat run](RESULTS.md#how-often-the-band-repeats) measures that: the same 100 held-out pull requests, run twice with nothing added, changed band 16 times. That run used a different sample from this one, so the comparison is approximate. It did not buy a smaller hold on average. It did not get flagged less on any set. We have not shown that no wording can work, and this is one wording on 100 pull requests.
 
 Even if some wording worked, the most it could change is the size of a refundable hold, inside the bounds a maintainer set. No model output can waive a hold, forfeit one or open a door.

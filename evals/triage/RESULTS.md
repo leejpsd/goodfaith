@@ -37,7 +37,7 @@ It also misses a lot. It put 51.7% of maintainer-labelled low-effort pull reques
 
 ## How often the band repeats
 
-The repeat run has not finished yet.
+84 of 100 pull requests got the same band the second time. 3 moved into or out of the high band.
 
 ## Limits
 
