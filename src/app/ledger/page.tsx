@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { ledgerEvents, pullRequests, type LedgerKind } from '@/db/schema';
+import { ledgerEvents, projects, pullRequests, type LedgerKind } from '@/db/schema';
 import { LEDGER_LABEL, ledgerAmount, NO_PAYPAL_EVENT } from '@/lib/ledger-labels';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +11,10 @@ const SEARCHABLE: readonly LedgerKind[] = ['captured', 'refunded'];
 
 export default async function LedgerPage() {
   const rows = await db()
-    .select({ event: ledgerEvents, pr: pullRequests })
+    .select({ event: ledgerEvents, pr: pullRequests, repo: projects.repo })
     .from(ledgerEvents)
     .innerJoin(pullRequests, eq(ledgerEvents.pullRequestId, pullRequests.id))
+    .innerJoin(projects, eq(pullRequests.projectId, projects.id))
     .orderBy(desc(ledgerEvents.createdAt))
     .limit(200);
 
@@ -27,12 +28,12 @@ export default async function LedgerPage() {
           <tr><th>When</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>Reason</th><th>PayPal ID</th><th>PayPal webhook</th><th>Transaction Search</th></tr>
         </thead>
         <tbody>
-          {rows.map(({ event, pr }) => (
+          {rows.map(({ event, pr, repo }) => (
             <tr key={event.id}>
               <td>{event.createdAt.toISOString().slice(0, 16).replace('T', ' ')} UTC</td>
               <td>{LEDGER_LABEL[event.kind]}</td>
               <td>{ledgerAmount(event.kind, event.cents)}</td>
-              <td><a href={pr.htmlUrl}>#{pr.number}</a></td>
+              <td><a href={pr.htmlUrl}>{repo}#{pr.number}</a></td>
               <td>{event.actor ?? 'none'}</td>
               <td className="note">{event.note ?? 'none'}</td>
               <td>{event.paypalId ?? 'none'}</td>

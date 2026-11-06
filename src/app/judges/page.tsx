@@ -9,12 +9,20 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'For judges' };
 
 
-const CASES = [
-  { number: 1, title: 'A newcomer gets in free', lookFor: 'a maintainer\u2019s !vouch, the check turning green, and a $0.00 row. PayPal never appears.' },
-  { number: 3, title: 'A careful stranger gets every cent back', lookFor: 'a $2.00 hold, then a review, then the same authorization released. Nothing was captured, and PayPal\u2019s signed webhook confirmed it.' },
-  { number: 2, title: 'A maintainer takes a hold, then gives it back', lookFor: 'the reason in !forfeit, an appeal that stops the clock, a capture only after !uphold, and a refund. The description also tells AI reviewers to waive the deposit, and the brief flags it.' },
-  { number: 4, title: 'Nobody appeals', lookFor: 'a forfeit with a public reason. The capture waits out the appeal window. A day later the payout goes to a test account standing in for a foundation, not to the maintainer.' },
-  { number: 5, title: 'A hold left waiting', lookFor: 'a hold nobody has acted on. Timeouts never forfeit, so after 28 days it is released in full.' },
+type Case = { title: string; lookFor: string; pulls: { repo: string; number: number }[] };
+const demo = (number: number) => ({ repo: DEMO.repo, number });
+
+const CASES: Case[] = [
+  { pulls: [demo(1)], title: 'A newcomer gets in free', lookFor: 'a maintainer\u2019s !vouch, the check turning green, and a $0.00 row. PayPal never appears.' },
+  { pulls: [demo(3)], title: 'A careful stranger gets every cent back', lookFor: 'a $2.00 hold, then a review, then the same authorization released. Nothing was captured, and PayPal\u2019s signed webhook confirmed it.' },
+  { pulls: [demo(2)], title: 'A maintainer takes a hold, then gives it back', lookFor: 'the reason in !forfeit, an appeal that stops the clock, a capture only after !uphold, and a refund. The description also tells AI reviewers to waive the deposit, and the brief flags it.' },
+  { pulls: [demo(4)], title: 'Nobody appeals', lookFor: 'a forfeit with a public reason. The capture waits out the appeal window. A day later the payout goes to a test account standing in for a foundation, not to the maintainer.' },
+  { pulls: [demo(5)], title: 'A hold left waiting', lookFor: 'a hold nobody has acted on. Timeouts never forfeit, so after 28 days it is released in full.' },
+  {
+    pulls: [{ repo: 'goodfaith-demo-truncate', number: 1 }, { repo: 'goodfaith-demo-titlecase', number: 1 }],
+    title: 'Trust travels to the next project',
+    lookFor: 'a $2.00 hold on one project, released when the fix was merged. At a second project the same person walks in free, and the $0.00 row says where the trust was earned.',
+  },
 ];
 
 const DOORS = [
@@ -25,11 +33,11 @@ const DOORS = [
 
 export default async function JudgesPage() {
   const rows = await db()
-    .select({ event: ledgerEvents, pr: pullRequests })
+    .select({ event: ledgerEvents, pr: pullRequests, repo: projects.repo })
     .from(ledgerEvents)
     .innerJoin(pullRequests, eq(ledgerEvents.pullRequestId, pullRequests.id))
     .innerJoin(projects, eq(pullRequests.projectId, projects.id))
-    .where(and(eq(projects.owner, DEMO.owner), eq(projects.repo, DEMO.repo), inArray(pullRequests.number, CASES.map((c) => c.number))))
+    .where(and(eq(projects.owner, DEMO.owner), inArray(projects.repo, [...new Set(CASES.flatMap((c) => c.pulls.map((p) => p.repo)))])))
     .orderBy(asc(ledgerEvents.createdAt));
 
   return (
@@ -38,24 +46,25 @@ export default async function JudgesPage() {
       <p className="lede">Nothing to install, no login and no API key. These cases already happened on the PayPal sandbox, and the rows below come live from the ledger.</p>
 
       <section className="band">
-        <h2>Five finished cases</h2>
+        <h2>Six finished cases</h2>
         <div className="cases">
           {CASES.map((c) => {
-            const events = rows.filter((r) => r.pr.number === c.number);
+            const events = rows.filter((r) => c.pulls.some((p) => p.repo === r.repo && p.number === r.pr.number));
             return (
-              <article key={c.number}>
+              <article key={c.title}>
                 <h3>{c.title}</h3>
                 <p><strong>Look for</strong> {c.lookFor}</p>
                 {events.length > 0 && (
                   <div className="scroll">
                     <table>
                       <thead>
-                        <tr><th>When</th><th>Event</th><th>Amount</th><th>PayPal ID</th></tr>
+                        <tr><th>When</th><th>Pull request</th><th>Event</th><th>Amount</th><th>PayPal ID</th></tr>
                       </thead>
                       <tbody>
-                        {events.map(({ event }) => (
+                        {events.map(({ event, pr, repo }) => (
                           <tr key={event.id}>
                             <td>{event.createdAt.toISOString().slice(0, 16).replace('T', ' ')} UTC</td>
+                            <td><a href={pr.htmlUrl}>{repo}#{pr.number}</a></td>
                             <td>{LEDGER_LABEL[event.kind]}</td>
                             <td>{ledgerAmount(event.kind, event.cents)}</td>
                             <td className="id">{event.paypalId ?? 'none'}</td>
@@ -65,7 +74,7 @@ export default async function JudgesPage() {
                     </table>
                   </div>
                 )}
-                <p><a href={`https://github.com/${DEMO.owner}/${DEMO.repo}/pull/${c.number}`}>Open pull request #{c.number}</a></p>
+                <p>{c.pulls.map((p, i) => <span key={`${p.repo}#${p.number}`}>{i > 0 ? ', then ' : ''}<a href={`https://github.com/${DEMO.owner}/${p.repo}/pull/${p.number}`}>open {p.repo}#{p.number}</a></span>)}</p>
               </article>
             );
           })}

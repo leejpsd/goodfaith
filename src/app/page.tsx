@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { db } from '@/db/client';
-import { ledgerEvents, pullRequests } from '@/db/schema';
+import { ledgerEvents, projects, pullRequests } from '@/db/schema';
 import { toPayPalValue } from '@/lib/hold';
 import { LEDGER_LABEL, ledgerAmount } from '@/lib/ledger-labels';
 
@@ -11,9 +11,10 @@ export const dynamic = 'force-dynamic';
 async function recent() {
   try {
     return await db()
-      .select({ event: ledgerEvents, pr: pullRequests })
+      .select({ event: ledgerEvents, pr: pullRequests, repo: projects.repo })
       .from(ledgerEvents)
       .innerJoin(pullRequests, eq(ledgerEvents.pullRequestId, pullRequests.id))
+      .innerJoin(projects, eq(pullRequests.projectId, projects.id))
       .orderBy(desc(ledgerEvents.createdAt))
       .limit(6);
   } catch {
@@ -144,11 +145,11 @@ export default async function Home() {
                 <tr><th>Event</th><th>Amount</th><th>Pull request</th><th>PayPal ID</th></tr>
               </thead>
               <tbody>
-                {rows.map(({ event, pr }) => (
+                {rows.map(({ event, pr, repo }) => (
                   <tr key={event.id}>
                     <td>{LEDGER_LABEL[event.kind]}</td>
                     <td>{ledgerAmount(event.kind, event.cents)}</td>
-                    <td><a href={pr.htmlUrl}>#{pr.number}</a></td>
+                    <td><a href={pr.htmlUrl}>{repo}#{pr.number}</a></td>
                     <td className="id">{event.paypalId ?? 'none'}</td>
                   </tr>
                 ))}
