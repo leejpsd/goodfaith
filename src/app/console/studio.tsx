@@ -28,6 +28,8 @@ const PAGES = [
 ];
 
 const field = (id: string) => ({ id });
+// Studio's currency format has no symbol of its own, and every amount here is US dollars.
+const USD = { format: 'currencyFormat', formatOptions: { format: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) } } as const;
 
 const title = (text: string) => ({ title: { enabled: true, text, typography: { fontSize: 15 } } });
 const kpi = (id: string, aggregation: string, text: string) => ({ type: 'value', dataMapping: { value: [{ id, aggregation }] }, format: { style: { label: { enabled: true, text } } } });
@@ -134,7 +136,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             { id: 'need', name: 'What it needs', format: 'textFormat' },
             { id: 'detail', name: 'What to do', format: 'textFormat' },
             { id: 'due', name: 'By when', format: 'textFormat' },
-            { id: 'amount', name: 'Amount held', format: 'currencyFormat' },
+            { id: 'amount', name: 'Amount held', ...USD },
             { id: 'band', name: 'AI band', format: 'textFormat' },
             { id: 'brief', name: 'AI brief', format: 'textFormat' },
             { id: 'flagged', name: 'Flag', format: 'textFormat' },
@@ -162,7 +164,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             { id: 'url', name: 'Link', format: 'textFormat' },
             { id: 'state', name: 'State', format: 'textFormat' },
             { id: 'open', name: 'Holds in place', format: 'integerFormat' },
-            { id: 'amount', name: 'Amount', format: 'currencyFormat' },
+            { id: 'amount', name: 'Amount', ...USD },
             { id: 'placedAt', name: 'Placed, exact', format: 'textFormat' },
             { id: 'appealEndsAt', name: 'Appeal ends, exact', format: 'textFormat' },
             { id: 'capturedAt', name: 'Captured, exact', format: 'textFormat' },
@@ -180,7 +182,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           fields: [
             { id: 'at', name: 'Date', format: 'textFormat' },
             { id: 'event', name: 'Event', format: 'textFormat' },
-            { id: 'amount', name: 'Amount', format: 'currencyFormat' },
+            { id: 'amount', name: 'Amount', ...USD },
             { id: 'pr', name: 'Pull request', format: 'integerFormat' },
             { id: 'by', name: 'By', format: 'textFormat' },
             { id: 'reason', name: 'Reason', format: 'textFormat' },
@@ -195,7 +197,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           data: data.money,
           fields: [
             { id: 'outcome', name: 'Outcome', format: 'textFormat' },
-            { id: 'amount', name: 'Amount', format: 'currencyFormat' },
+            { id: 'amount', name: 'Amount', ...USD },
           ],
         },
       ],
