@@ -141,7 +141,7 @@ Band accuracy is measured on real public pull requests, under [rules fixed in ad
 3. Create a PayPal sandbox app with Payouts turned on, and fund its sandbox business account, since payouts draw on that balance. Subscribe `https://<your-host>/api/paypal/webhook` to:
    - `PAYMENT.AUTHORIZATION.CREATED`, `PAYMENT.AUTHORIZATION.VOIDED`
    - `PAYMENT.CAPTURE.COMPLETED`, `.PENDING`, `.DECLINED`, `.DENIED`, `.REFUNDED`, `.REVERSED`
-   - `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`, `.FAILED`, `.BLOCKED`, `.DENIED`, `.RETURNED`, `.UNCLAIMED`
+   - `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`, `.FAILED`, `.BLOCKED`, `.DENIED`, `.RETURNED`, `.UNCLAIMED`, `.REFUNDED`, `.CANCELED`
    - `CUSTOMER.DISPUTE.CREATED`, `CUSTOMER.DISPUTE.RESOLVED`
 4. Set the variables in `.env.example`.
 5. Install the app on a repository, and add `.github/goodfaith.json`.
@@ -247,7 +247,7 @@ This project was built with Claude Code, using PayPal's AI Toolkit references an
 ## What's next
 
 - Legal advice on paying forfeits out, or a design where each project is the merchant.
-- A settings page, for maintainers who would rather not edit a file.
+- Saving the settings straight from the install page, for maintainers who would rather not commit a file.
 - A trial with a real project that has closed its door, if one wants it.
 
 ## Getting help
