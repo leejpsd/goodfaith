@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ACTIONS, type TryAction } from '@/lib/demo/actions';
+import { LEDGER_LABEL, ledgerAmount, NO_PAYPAL_EVENT } from '@/lib/ledger-labels';
 import type { TryState } from '@/server/try-flow';
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -19,7 +20,6 @@ const EFFECT: Record<TryAction, string> = {
   reverse: 'PayPal refunds the capture in full. After a day it would be paid out and final.',
 };
 
-const LEDGER = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded', disputed: 'Dispute opened', dispute_resolved: 'Dispute resolved' } as const;
 
 function headline(state: TryState): string {
   const hold = state.hold?.state;
@@ -138,10 +138,10 @@ export function TryConsole({ number }: { number: string }) {
               <tbody>
                 {state.events.map((event) => (
                   <tr key={event.id}>
-                    <td>{LEDGER[event.kind]}</td>
-                    <td>{money(event.cents)}</td>
+                    <td>{LEDGER_LABEL[event.kind]}</td>
+                    <td>{ledgerAmount(event.kind, event.cents)}</td>
                     <td className="id">{event.paypalId ?? 'none'}</td>
-                    <td>{event.kind === 'vouched' || event.kind === 'forfeit_opened' || event.kind === 'appealed' ? 'none' : event.confirmed ? 'confirmed' : 'not yet'}</td>
+                    <td>{NO_PAYPAL_EVENT.includes(event.kind) ? 'none' : event.confirmed ? 'confirmed' : 'not yet'}</td>
                   </tr>
                 ))}
               </tbody>

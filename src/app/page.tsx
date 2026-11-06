@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { db } from '@/db/client';
 import { ledgerEvents, pullRequests } from '@/db/schema';
 import { toPayPalValue } from '@/lib/hold';
+import { LEDGER_LABEL, ledgerAmount } from '@/lib/ledger-labels';
 
 export const dynamic = 'force-dynamic';
 
-const LABEL = { vouched: 'Vouched', held: 'Hold placed', voided: 'Hold released', forfeit_opened: 'Forfeit', appealed: 'Appealed', captured: 'Captured', paid_out: 'Paid out', refunded: 'Refunded', disputed: 'Dispute opened', dispute_resolved: 'Dispute resolved' } as const;
 
 async function recent() {
   try {
@@ -146,8 +146,8 @@ export default async function Home() {
               <tbody>
                 {rows.map(({ event, pr }) => (
                   <tr key={event.id}>
-                    <td>{LABEL[event.kind]}</td>
-                    <td>${toPayPalValue(event.cents)}</td>
+                    <td>{LEDGER_LABEL[event.kind]}</td>
+                    <td>{ledgerAmount(event.kind, event.cents)}</td>
                     <td><a href={pr.htmlUrl}>#{pr.number}</a></td>
                     <td className="id">{event.paypalId ?? 'none'}</td>
                   </tr>

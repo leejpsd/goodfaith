@@ -10,6 +10,8 @@ A stranger's pull request reaches review in one of two ways: a maintainer vouche
 
 PayPal is the sandbox, and all money here is sandbox money. The AI model is OpenAI `gpt-6-luna`.
 
+![The maintainer console: what needs an answer, with links, deadlines and the AI's brief](docs/console.png)
+
 ## The problem
 
 Maintainers surveyed by [Linux Foundation Research](https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop) in October 2026 estimated that a quarter of incoming pull requests are low-quality AI slop, and 31% on large projects. In public GitHub data we collected, repositories with 1,000 or more stars using a `slop` label on a stranger's pull request went from 2 in the second quarter of 2025 to 63 in the third quarter of 2026. Some of that is projects starting to use the label.
@@ -161,6 +163,8 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 [The console](https://goodfaith.onrender.com/console) shows the queue, every hold and the ledger, on the app's own data.
 
+![Every hold on one 28-day ruler, stamped with how it ended](docs/console-holds.png)
+
 - **A custom widget.** The hold timeline puts each hold on a 28-day ruler, with PayPal's honor period, the appeal window and the capture. It reads through Studio's data mapping, so filters apply to it.
 - **Custom theming.** It uses the same paper, ink and stamp as the rest of the site.
 - **A custom agent on the Studio Agent Framework.** It answers from the ledger and the fixed rules, and hands dashboard work to Studio's built-in page and widget agents. Its model calls go through the app's own route, so the key stays on the server.
@@ -208,6 +212,16 @@ npm run typecheck
 PayPal JS SDK v6, Orders v2, Payments v2, Payouts v1, Webhooks and Transaction Search, all on the sandbox, through the PayPal Server SDK where it has coverage. OpenAI `gpt-6-luna` with structured outputs. AG Studio. Next.js, React, TypeScript, Drizzle, Postgres and Render.
 
 This project was built with Claude Code, using PayPal's AI Toolkit references and APIMatic's PayPal Context Plugin ([what the plugin changed](docs/apimatic-context-plugin.md)), and commits it worked on carry a `Co-Authored-By` line. Pull requests from before the evaluation show `gpt-6.1-sol` in their bot comments, because the product moved to `gpt-6-luna` after the [comparison on the tuning set](evals/triage/RULES.md).
+
+## What's next
+
+- Legal advice on paying forfeits out, or a design where each project is the merchant.
+- A settings page, for maintainers who would rather not edit a file.
+- A trial with a real project that has closed its door, if one wants it.
+
+## Getting help
+
+Open an issue, or read [CONTRIBUTING.md](CONTRIBUTING.md) to send a change. This project follows a [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

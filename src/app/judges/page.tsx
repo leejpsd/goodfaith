@@ -1,25 +1,13 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { db } from '@/db/client';
-import { ledgerEvents, projects, pullRequests, type LedgerKind } from '@/db/schema';
+import { ledgerEvents, projects, pullRequests } from '@/db/schema';
 import { DEMO } from '@/lib/demo/constants';
-import { toPayPalValue } from '@/lib/hold';
+import { LEDGER_LABEL, ledgerAmount } from '@/lib/ledger-labels';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'For judges' };
 
-const LABEL: Record<LedgerKind, string> = {
-  vouched: 'Vouched',
-  held: 'Hold placed',
-  voided: 'Hold released',
-  forfeit_opened: 'Forfeit, no money moved',
-  appealed: 'Appealed, no money moved',
-  captured: 'Captured',
-  paid_out: 'Paid out',
-  refunded: 'Refunded',
-  disputed: 'Dispute opened',
-  dispute_resolved: 'Dispute resolved',
-};
 
 const CASES = [
   { number: 1, title: 'A newcomer gets in free', lookFor: 'a maintainer\u2019s !vouch, the check turning green, and a $0.00 row. PayPal never appears.' },
@@ -68,8 +56,8 @@ export default async function JudgesPage() {
                         {events.map(({ event }) => (
                           <tr key={event.id}>
                             <td>{event.createdAt.toISOString().slice(0, 16).replace('T', ' ')} UTC</td>
-                            <td>{LABEL[event.kind]}</td>
-                            <td>${toPayPalValue(event.cents)}</td>
+                            <td>{LEDGER_LABEL[event.kind]}</td>
+                            <td>{ledgerAmount(event.kind, event.cents)}</td>
                             <td className="id">{event.paypalId ?? 'none'}</td>
                           </tr>
                         ))}

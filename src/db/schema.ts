@@ -90,7 +90,7 @@ export const holds = pgTable('holds', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type LedgerKind = 'vouched' | 'held' | 'voided' | 'forfeit_opened' | 'appealed' | 'captured' | 'paid_out' | 'refunded' | 'disputed' | 'dispute_resolved';
+export type LedgerKind = 'vouched' | 'held' | 'voided' | 'forfeit_opened' | 'appealed' | 'upheld' | 'captured' | 'paid_out' | 'refunded' | 'disputed' | 'dispute_resolved';
 
 // The public record. Rows are only ever added, and a reconciliation fills in `reconciledAt`.
 export const ledgerEvents = pgTable(

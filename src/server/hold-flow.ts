@@ -309,7 +309,7 @@ export async function onHoldCommand(deps: HoldDeps, scope: Scope, command: Exclu
     case 'uphold': {
       const saved = await settle(deps, scope, row, decision.next, decision.effects);
       if (!saved) return;
-      await record(deps, scope, saved, 'forfeit_opened', { paypalId: saved.authorizationId, actor, note: 'appeal answered: upheld' });
+      await record(deps, scope, saved, 'upheld', { paypalId: saved.authorizationId, actor });
       await tell(deps, scope, { comment: upheldComment(actor) });
       // The appeal window is over, so the capture does not need to wait for the clock.
       await settleDue(deps, scope, saved, new Date());

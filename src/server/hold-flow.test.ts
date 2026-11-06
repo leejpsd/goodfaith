@@ -532,7 +532,7 @@ describe('an appeal', () => {
     await onIssueComment(deps, say('!appeal I wrote this myself', 'new-person'));
     await onIssueComment(deps, say('!uphold'));
     expect((await holdRow(pr.id)).state).toBe('captured');
-    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'appealed', 'forfeit_opened', 'captured']);
+    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'appealed', 'upheld', 'captured']);
 
     await onIssueComment(deps, say('!reverse the appeal was right'));
     const row = await holdRow(pr.id);
