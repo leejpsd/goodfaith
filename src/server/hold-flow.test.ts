@@ -122,6 +122,8 @@ beforeEach(async () => {
   // The clock looks at every open hold, so holds from earlier tests must not linger.
   await db.delete(ledgerEvents);
   await db.delete(holds);
+  // Earned trust reads merges at other projects, so merges from earlier tests must not linger.
+  await db.update(pullRequests).set({ status: 'closed' }).where(eq(pullRequests.status, 'merged'));
   github = new FakeGitHub();
   paypal = new FakePayPal();
   deps = { db, github, paypal, appUrl: 'https://app.test' };

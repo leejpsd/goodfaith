@@ -93,8 +93,19 @@ export const noHoldComment = (login: string) => `@${login}, this pull request ha
 
 export const refusedComment = (login: string, reason: string) => `@${login}, nothing changed: ${reason}.`;
 
+export function earnedComment(input: { login: string; from: string }): string {
+  return [
+    `Welcome, @${input.login}. You are in, for free.`,
+    '',
+    `Your pull request ${input.from} went through Goodfaith there and was merged, so this project lets you skip the gate. No PayPal and no money.`,
+    '',
+    'A maintainer can still ask for changes, as with anyone.',
+  ].join('\n');
+}
+
 export const CHECK = {
   known: { status: 'completed', conclusion: 'success', title: 'Known contributor', summary: 'This author goes straight to review.' },
+  earned: { status: 'completed', conclusion: 'success', title: 'Trusted from another project', summary: 'A pull request of theirs was merged through Goodfaith elsewhere. No money was involved.' },
   waiting: { status: 'in_progress', title: 'Waiting for a vouch or a hold', summary: 'See the comment on this pull request. A vouch is free.' },
   vouched: { status: 'completed', conclusion: 'success', title: 'Vouched by a maintainer', summary: 'No money was involved.' },
   closed: { status: 'completed', conclusion: 'failure', title: 'Author is denounced', summary: 'A hold cannot change this.' },

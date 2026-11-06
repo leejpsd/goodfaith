@@ -174,6 +174,7 @@ export const HOLD_RULES = [
   `Only a maintainer's !forfeit, with a public reason, can lead to a capture. No timer and no model can start one.`,
   `After a forfeit the author can !appeal until the window closes. An appeal blocks the capture until a maintainer answers with !release or !uphold.`,
   `A capture can be reversed with !reverse for one day. After that it is paid out to the project, and a payout is final.`,
+  `A newcomer whose pull request went through Goodfaith at another project and was merged gets the free door, unless this project sets trust_earned_elsewhere to false.`,
   `A hold nobody acts on is released after ${AUTHORIZATION_DAYS - VOID_BEFORE_EXPIRY_DAYS} days. Timeouts never forfeit.`,
   `PayPal's honor period is ${HONOR_DAYS} days. A capture after it reauthorizes first.`,
   `The AI picks a band, and code maps it to the project's minimum, default or maximum amount. It has no way to forfeit, vouch, close or change a bound.`,

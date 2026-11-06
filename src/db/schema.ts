@@ -21,6 +21,7 @@ export const projects = pgTable(
     appealDays: integer('appeal_days').notNull().default(7),
     // With none set, a capture stays in the operator's account and is never paid out.
     payoutReceiver: text('payout_receiver'),
+    trustEarned: boolean('trust_earned').notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [unique('projects_owner_repo').on(t.owner, t.repo)],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readSettings, type ProjectSettings } from './config';
 
-const current: ProjectSettings = { minCents: 200, maxCents: 2500, defaultCents: 500, appealDays: 7, payoutReceiver: null };
+const current: ProjectSettings = { minCents: 200, maxCents: 2500, defaultCents: 500, appealDays: 7, payoutReceiver: null, trustEarned: true };
 
 describe('readSettings', () => {
   it('applies valid settings', () => {
@@ -11,6 +11,7 @@ describe('readSettings', () => {
       defaultCents: 400,
       appealDays: 1,
       payoutReceiver: 'a@example.com',
+      trustEarned: true,
     });
   });
 
@@ -29,5 +30,9 @@ describe('readSettings', () => {
     ['a bad receiver', '{"payout_receiver":"not an email"}'],
   ])('ignores %s', (_name, text) => {
     expect(readSettings(text, current)).toEqual(current);
+  });
+
+  it('lets a project turn earned trust off', () => {
+    expect(readSettings('{"trust_earned_elsewhere":false}', current).trustEarned).toBe(false);
   });
 });

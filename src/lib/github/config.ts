@@ -11,6 +11,7 @@ const settings = z
     default_cents: z.number().int(),
     appeal_days: z.number().int().min(1).max(14),
     payout_receiver: z.email().nullable(),
+    trust_earned_elsewhere: z.boolean(),
   })
   .partial()
   .strict();
@@ -21,6 +22,8 @@ export interface ProjectSettings {
   defaultCents: number;
   appealDays: number;
   payoutReceiver: string | null;
+  // Whether a newcomer whose gated pull request was merged at another project skips the gate here.
+  trustEarned: boolean;
 }
 
 export function readSettings(text: string | null, current: ProjectSettings): ProjectSettings {
@@ -33,13 +36,14 @@ export function readSettings(text: string | null, current: ProjectSettings): Pro
   }
   const parsed = settings.safeParse(json);
   if (!parsed.success) return current;
-  const { min_cents, max_cents, default_cents, appeal_days, payout_receiver } = parsed.data;
+  const { min_cents, max_cents, default_cents, appeal_days, payout_receiver, trust_earned_elsewhere } = parsed.data;
   const next: ProjectSettings = {
     minCents: min_cents ?? current.minCents,
     maxCents: max_cents ?? current.maxCents,
     defaultCents: default_cents ?? current.defaultCents,
     appealDays: appeal_days ?? current.appealDays,
     payoutReceiver: payout_receiver === undefined ? current.payoutReceiver : payout_receiver,
+    trustEarned: trust_earned_elsewhere ?? current.trustEarned,
   };
   return next.minCents <= next.defaultCents && next.defaultCents <= next.maxCents ? next : current;
 }

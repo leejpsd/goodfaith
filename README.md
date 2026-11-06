@@ -37,12 +37,15 @@ Economists proposed this for email in 2004: [an unknown sender escrows a pledge,
 | Known | Collaborators, past contributors, bots, anyone in `.github/VOUCHED.td` | Goes straight to review | None |
 | Vouch | A newcomer, once a maintainer comments `!vouch` | Enters review, and the ledger records a $0 vouch | None |
 | Hold | A newcomer who wants in without taking a maintainer's time first | Places a refundable hold, then enters review | A hold, not a charge |
+| Earned | A newcomer whose pull request went through Goodfaith at another project and was merged | Goes straight to review, and the ledger records a $0 vouch that says where it was earned | None |
 
 The vouch comes first everywhere: in the bot's comment, on the hold page and in this file. A denounced author is not offered a hold, because money does not buy back a ban. A vouch that arrives after a hold releases the hold.
 
 **Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first. We recommend sending forfeits to a charity or a foundation through `payout_receiver`, so a maintainer gains nothing by rejecting someone.
 
 **It reaches across projects.** GitHub says its own pull request cap ["does nothing when someone opens pull requests across hundreds of repositories at once"](https://github.blog/open-source/maintainers/how-pull-request-limits-are-cutting-down-the-noise/). A hold ties up real funds, and one PayPal account can have at most 5 open across every project using Goodfaith. In our data, 43% of labelled pull requests came from authors labelled more than once.
+
+**Trust travels.** Inside one project, a merged contributor is already known to GitHub. Goodfaith carries that merge to every other project that uses it, so a stranger's first pull request may cost a refundable $2, and their next one, anywhere, costs nothing. Only a merge earns it, since any review releases a hold, and a project can turn it off with `trust_earned_elsewhere`. The try repository turns it off, so every visitor meets the gate.
 
 **Turn it off when it does not fit,** such as during an event for first-time contributors.
 
@@ -138,7 +141,8 @@ A maintainer sets the bounds in the repository, through the same review as any o
   "max_cents": 2500,
   "default_cents": 500,
   "appeal_days": 7,
-  "payout_receiver": "maintainers@example.com"
+  "payout_receiver": "maintainers@example.com",
+  "trust_earned_elsewhere": true
 }
 ```
 

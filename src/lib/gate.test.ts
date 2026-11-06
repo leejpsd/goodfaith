@@ -24,4 +24,9 @@ describe('chooseDoor', () => {
   it('offers a denounced user no hold', () => {
     expect(chooseDoor({ ...base, listStatus: 'denounced' })).toEqual({ door: 'closed', reason: 'denounced' });
   });
+
+  it('lets in an author whose gated pull request was merged elsewhere, unless denounced', () => {
+    expect(chooseDoor({ ...base, earned: true })).toEqual({ door: 'known', reason: 'earned' });
+    expect(chooseDoor({ ...base, earned: true, listStatus: 'denounced' }).door).toBe('closed');
+  });
 });

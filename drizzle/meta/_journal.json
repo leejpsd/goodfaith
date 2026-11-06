@@ -50,6 +50,13 @@
       "when": 1793927115279,
       "tag": "0006_upheld",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793931847735,
+      "tag": "0007_trust_earned",
+      "breakpoints": true
     }
   ]
 }

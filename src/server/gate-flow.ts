@@ -1,11 +1,11 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { holds, ledgerEvents, projects, pullRequests, vouches, type PullRequestStatus, type StoredHoldState } from '@/db/schema';
 import { mayUse, parseCommand, type Command } from '@/lib/commands';
 import { chooseDoor } from '@/lib/gate';
 import type { CheckState } from '@/lib/github/client';
 import { readSettings } from '@/lib/github/config';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
-import { CHECK, closedDoorComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment, WAITING_LABEL } from '@/lib/messages';
+import { CHECK, closedDoorComment, earnedComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment, WAITING_LABEL } from '@/lib/messages';
 import { listStatus, parseVouchList } from '@/lib/vouch';
 import type { Deps, HoldDeps } from './deps';
 import { onHoldCommand, releaseForReview, releaseForVouch, type Scope } from './hold-flow';
@@ -91,10 +91,12 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
   const login = pr.user.login.toLowerCase();
   const [vouch] = await deps.db.select().from(vouches).where(and(eq(vouches.projectId, project.id), eq(vouches.login, login)));
   const list = parseVouchList((await deps.github.vouchFile(owner, repo)) ?? '');
+  const earned = project.trustEarned ? await earnedAt(deps, project.id, login) : null;
   const decision = chooseDoor({
     isBot: isBot(pr.user),
     association: pr.author_association,
     listStatus: vouch && listStatus(list, login) !== 'denounced' ? 'vouched' : listStatus(list, login),
+    earned: earned !== null,
   });
 
   const status: PullRequestStatus = decision.door === 'known' ? 'in_review' : decision.door === 'closed' ? 'blocked' : 'waiting';
@@ -115,7 +117,8 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
     .returning();
   if (!row) return;
 
-  const state = decision.door === 'known' ? CHECK.known : decision.door === 'closed' ? CHECK.closed : CHECK.waiting;
+  const earnedDoor = decision.door === 'known' && decision.reason === 'earned' && earned !== null;
+  const state = earnedDoor ? CHECK.earned : decision.door === 'known' ? CHECK.known : decision.door === 'closed' ? CHECK.closed : CHECK.waiting;
   const checkRunId = await deps.github.createCheck(owner, repo, pr.head.sha, state);
   let gateCommentId: number | null = null;
   if (decision.door === 'choose') {
@@ -128,8 +131,23 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
     );
   } else if (decision.door === 'closed') {
     gateCommentId = await deps.github.comment(owner, repo, pr.number, closedDoorComment(pr.user.login));
+  } else if (earnedDoor) {
+    // The free door, opened by a merge elsewhere, goes on the ledger like any vouch, at $0.
+    await deps.db.insert(ledgerEvents).values({ projectId: project.id, pullRequestId: row.id, kind: 'vouched', cents: 0, actor: 'goodfaith', note: `earned: ${earned} was merged` });
+    gateCommentId = await deps.github.comment(owner, repo, pr.number, earnedComment({ login: pr.user.login, from: earned }));
   }
   await deps.db.update(pullRequests).set({ checkRunId, gateCommentId }).where(eq(pullRequests.id, row.id));
+}
+
+// A pull request by the same person that faced the gate at another project and was merged.
+async function earnedAt(deps: Deps, projectId: string, login: string): Promise<string | null> {
+  const [merged] = await deps.db
+    .select({ owner: projects.owner, repo: projects.repo, number: pullRequests.number })
+    .from(pullRequests)
+    .innerJoin(projects, eq(pullRequests.projectId, projects.id))
+    .where(and(sql`lower(${pullRequests.authorLogin}) = ${login}`, eq(pullRequests.door, 'choose'), eq(pullRequests.status, 'merged'), ne(pullRequests.projectId, projectId)))
+    .limit(1);
+  return merged ? `${merged.owner}/${merged.repo}#${merged.number}` : null;
 }
 
 async function scopeFor(deps: Deps, owner: string, repo: string, number: number): Promise<Scope | undefined> {

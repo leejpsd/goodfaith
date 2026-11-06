@@ -74,7 +74,9 @@ beforeAll(async () => {
   await migrate(db, { migrationsFolder: 'drizzle' });
 });
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Earned trust reads merges at other projects, so merges from earlier tests must not linger.
+  await db.update(pullRequests).set({ status: 'closed' }).where(eq(pullRequests.status, 'merged'));
   github = new FakeGitHub();
   deps = { db, github, paypal: new UnusedPayPal(), appUrl: 'https://app.test' };
   repo = `repo-${++repoCounter}`;
@@ -152,6 +154,34 @@ describe('doors that skip the gate', () => {
     github.file = '# list\nnew-person\n';
     await onPullRequest(deps, prEvent());
     expect(await prRow()).toMatchObject({ door: 'known', status: 'in_review' });
+  });
+
+  it('lets in an author whose gated pull request was merged at another project', async () => {
+    const person = { login: 'returning-person', type: 'User' };
+    await onPullRequest(deps, prEvent({ user: person }));
+    await onPullRequest(deps, prEvent({ user: person, merged: true }, 'closed'));
+    const first = repo;
+    repo = `${first}-next`;
+    github = new FakeGitHub();
+    deps = { ...deps, github };
+    await onPullRequest(deps, prEvent({ user: person }));
+    expect(await prRow()).toMatchObject({ door: 'known', status: 'in_review' });
+    expect(onlyCheck()).toMatchObject({ title: 'Trusted from another project' });
+    expect(github.comments[0]).toContain(`owner/${first}#1 went through Goodfaith there and was merged`);
+    const rows = await db.select().from(ledgerEvents).where(eq(ledgerEvents.actor, 'goodfaith'));
+    expect(rows.at(-1)).toMatchObject({ kind: 'vouched', cents: 0, note: `earned: owner/${first}#1 was merged` });
+  });
+
+  it('keeps the gate where a project turns earned trust off', async () => {
+    const person = { login: 'returning-elsewhere', type: 'User' };
+    await onPullRequest(deps, prEvent({ user: person }));
+    await onPullRequest(deps, prEvent({ user: person, merged: true }, 'closed'));
+    repo = `${repo}-strict`;
+    github = new FakeGitHub();
+    github.settingsFile = async () => '{"trust_earned_elsewhere":false}';
+    deps = { ...deps, github };
+    await onPullRequest(deps, prEvent({ user: person }));
+    expect(await prRow()).toMatchObject({ door: 'choose', status: 'waiting' });
   });
 
   it('blocks a denounced author and offers no hold', async () => {

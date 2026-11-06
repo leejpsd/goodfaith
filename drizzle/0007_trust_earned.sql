@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "trust_earned" boolean DEFAULT true NOT NULL;
