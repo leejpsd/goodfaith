@@ -18,7 +18,7 @@ const CASES = [
 ];
 
 const DOORS = [
-  { href: '/replay', label: 'Replay any public repository', lookFor: 'what a hold would have been on a real project\u2019s recent pull requests, and what happened to them. It is read-only.' },
+  { href: '/replay/ghostty-org/ghostty', label: 'Replay a project that closes its door', lookFor: 'Ghostty closes newcomers\u2019 pull requests within the hour unless someone vouched. The replay shows what each would have held instead. It is read-only, and you can replay any public repository.' },
   { href: '/console', label: 'Open the maintainer console', lookFor: 'the refusal when you ask the assistant to capture a hold. It has no tool that can. Then ask it for a chart.' },
   { href: 'https://github.com/leejpsd/goodfaith/tree/master/evals/triage', label: 'Read the evaluation', lookFor: 'rules hashed and published before the run, a plain rule to beat, and every miss.' },
 ];

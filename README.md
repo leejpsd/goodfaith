@@ -18,6 +18,8 @@ Maintainers surveyed by [Linux Foundation Research](https://www.linuxfoundation.
 
 So doors are closing. [Ladybird no longer accepts public pull requests](https://ladybird.org/posts/changing-how-we-develop-ladybird/), because effort was "a reasonable proxy for good faith" and no longer is. [tldraw closes outside pull requests automatically](https://tldraw.dev/blog/stay-away-from-my-trash). Ghostty closes them from anyone not on its [vouch list](https://github.com/mitchellh/vouch). [GitHub added a setting to turn pull requests off](https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/), and [warns](https://github.blog/open-source/maintainers/welcome-to-the-eternal-september-of-open-source-heres-what-we-plan-to-do-for-maintainers/) that such limits can fall hardest on "first-time contributors acting in good faith". [A 2026 preprint](https://arxiv.org/pdf/2607.04003) across 294 repositories found one-time contributors' merge rate running 18% below what its authors expected.
 
+**What a closed door looks like.** Ghostty's bot closes a pull request within a minute when nobody has vouched for its author. We [replayed Ghostty's last 300 pull requests](https://goodfaith.onrender.com/replay/ghostty-org/ghostty), read-only, on 2026-11-06: 20 from newcomers were closed within an hour. With a hold, every one could have reached a reviewer, 13 of them for $5 or less, and the model put the riskiest at the maximum.
+
 **Goodfaith is for a project that has closed, or is about to.** Against an open door, a hold is a toll. Against a closed one, it is more access than a stranger has today.
 
 ## An old idea that was missing a piece
