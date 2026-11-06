@@ -28,6 +28,7 @@ const CASES: Case[] = [
 const DOORS = [
   { href: '/replay/ghostty-org/ghostty', label: 'Replay a project that closes its door', lookFor: 'Ghostty closes newcomers\u2019 pull requests within the hour unless someone vouched. The replay shows what each would have held instead. It is read-only, and you can replay any public repository.' },
   { href: '/console', label: 'Open the maintainer console', lookFor: 'the refusal when you ask the assistant to capture a hold. It has no tool that can. Then ask it for a chart.' },
+  { href: 'https://github.com/leejpsd/goodfaith/blob/master/docs/apimatic-context-plugin.md#how-it-was-checked', label: 'Check that a retry cannot charge twice', lookFor: 'the same capture sent twice with one request ID, which returned the same capture, 6SK33786XB396403W, and no second charge, through the app\u2019s own PayPal client on the sandbox.' },
   { href: 'https://github.com/leejpsd/goodfaith/tree/master/evals/triage', label: 'Read the evaluation', lookFor: 'rules hashed and published before the run, a plain rule to beat, and every miss.' },
 ];
 

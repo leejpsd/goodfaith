@@ -12,6 +12,10 @@ PayPal is the sandbox, and all money here is sandbox money. The AI model is Open
 
 ![The maintainer console: what needs an answer, with links, deadlines and the AI's brief](docs/console.png)
 
+## How it differs from other bonds
+
+Refundable bonds on pull requests are not new: some ask only AI agents, and some take a crypto deposit. What Goodfaith puts together is a free vouch first, any stranger, a PayPal account rather than a crypto wallet, a model that cannot take money, and trust that travels.
+
 ## The problem
 
 Maintainers surveyed by [Linux Foundation Research](https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop) in October 2026 estimated that a quarter of incoming pull requests are low-quality AI slop, and 31% on large projects. In public GitHub data we collected, repositories with 1,000 or more stars using a `slop` label on a stranger's pull request went from 2 in the second quarter of 2025 to 63 in the third quarter of 2026. Some of that is projects starting to use the label.
@@ -175,9 +179,12 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ![Asked to capture a hold, the assistant says it cannot: only a maintainer's public !forfeit can start one](docs/console-refusal.png)
 
-- **A custom widget.** The hold timeline puts each hold on a 28-day ruler, with PayPal's honor period, the appeal window and the capture. It reads through Studio's data mapping, so filters apply to it.
-- **Custom theming.** It uses the same paper, ink and stamp as the rest of the site.
-- **A custom agent on the Studio Agent Framework.** It answers from the ledger and the fixed rules, and hands dashboard work to Studio's built-in page and widget agents. Its model calls go through the app's own route, so the key stays on the server.
+How we used AG Studio, with the code for each:
+
+- **Two custom widgets**, registered through `createWidgets` with Studio's data mapping and a description its agents can read. *Needs an answer* ([`needs-answer.tsx`](src/app/console/needs-answer.tsx)) lists what a maintainer must act on, most urgent first, with a link, the deadline and the AI's brief. *Hold timeline* ([`hold-timeline.tsx`](src/app/console/hold-timeline.tsx)) puts each hold on a 28-day ruler with PayPal's honor period and the appeal window, and stamps how it ended.
+- **Four pages and a theme**, set as the initial report state and `studioTheme.withParams` in [`studio.tsx`](src/app/console/studio.tsx), in the site's paper, ink and stamp, with dollar formats on every amount.
+- **A custom lead agent on the Studio Agent Framework**, `ledger-analyst`, built with `createAiHarness` and `directLlmRunner`. It has Studio's schema, page and query tools, one custom tool, `explain_hold_rules`, and `tools.delegateTo` to hand charts and pages to Studio's built-in page and widget agents.
+- **A custom `AgLlmAdapter`** ([`adapter.ts`](src/lib/console/adapter.ts)) sends every model call through the app's own route, with a fixed model and rate limits, so no key reaches the browser.
 - **No agent on the team has a tool that touches PayPal.** Ask it to capture a hold, and it says it cannot and names the maintainer's command.
 
 ## Real and simulated
@@ -199,7 +206,7 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 - **The AI reads a pull request only when it opens.** Someone could open a careful diff, get the low band, then push something else. A maintainer's review is what ends a hold, so the most this buys is a smaller hold.
 - **Paying forfeits out is legally unchecked.** Before going live, this needs advice on money transmission, or a design where each project is the merchant and Goodfaith never touches the money, which we have not tested.
 
-Similar bonds exist: some ask only AI agents, and some take a crypto deposit. What Goodfaith puts together is a free vouch before any money, any stranger, a PayPal account rather than a crypto wallet, and a model that cannot forfeit.
+Similar ideas are compared [near the top](#how-it-differs-from-other-bonds).
 
 ## Run it locally
 
