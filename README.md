@@ -179,6 +179,8 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ![Asked to capture a hold, the assistant says it cannot: only a maintainer's public !forfeit can start one](docs/console-refusal.png)
 
+![Asked for a chart, the assistant hands it to Studio's page and widget agents, which add it to the page in view](docs/console-chart.png)
+
 How we used AG Studio, with the code for each:
 
 - **Two custom widgets**, registered through `createWidgets` with Studio's data mapping and a description its agents can read. *Needs an answer* ([`needs-answer.tsx`](src/app/console/needs-answer.tsx)) lists what a maintainer must act on, most urgent first, with a link, the deadline and the AI's brief. *Hold timeline* ([`hold-timeline.tsx`](src/app/console/hold-timeline.tsx)) puts each hold on a 28-day ruler with PayPal's honor period and the appeal window, and stamps how it ended.
