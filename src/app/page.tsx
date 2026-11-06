@@ -109,6 +109,10 @@ export default async function Home() {
             <h3>The hold</h3>
             <p>For a stranger who would rather not ask anyone for anything. PayPal reserves between $2 and $25, inside bounds the maintainers set in their repository. A maintainer&apos;s review, a merge or a close releases all of it, though the money stays reserved until then. It costs a maintainer nothing until they choose to look, and they can review held pull requests first.</p>
           </div>
+          <div>
+            <h3>And trust travels</h3>
+            <p>Once a pull request through Goodfaith is merged, its author walks in free at every other project that uses it. Their first pull request may cost a refundable $2. Their next one, anywhere, costs nothing. <Link href="/judges">See it happen</Link>.</p>
+          </div>
         </div>
       </section>
 
