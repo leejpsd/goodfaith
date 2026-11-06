@@ -43,6 +43,7 @@ export function ReplayView({ owner, name }: { owner: string; name: string }) {
   if (!result) return <><h1>{title}</h1><p className="muted" role="status">Reading recent pull requests from people new to this project. This takes about a minute.</p></>;
 
   const s = summarize(result.rows);
+  const bandCount = (band: 'low' | 'medium' | 'high') => result.rows.filter((row) => row.closedFast && row.band === band).length;
   return (
     <>
       <h1>{title}</h1>
@@ -54,7 +55,9 @@ export function ReplayView({ owner, name }: { owner: string; name: string }) {
           <>
             <h2>Of the last {result.looked} pull requests, {result.strangersFound >= 50 ? 'at least 50' : result.strangersFound} from people new to this project were closed within an hour of opening.</h2>
             <p>This project closes most newcomers&apos; pull requests at once, before any review. Goodfaith would keep that rule as the free door, and add a second one: a refundable hold.{result.strangersFound > s.strangers ? ` This shows the latest ${s.strangers}.` : ''}</p>
-            <p><strong>The model put {s.closedFastLow} of these {s.strangers} in the low band.</strong> Each could have reached review for a {money(200)} hold, released in full by any review.</p>
+            <p>
+              <strong>With a hold, all {s.strangers} could have reached a reviewer.</strong> The model sized {bandCount('low')} at {money(200)}, {bandCount('medium')} at {money(500)} and {bandCount('high')} at {money(2500)}, and any review releases the whole hold.
+            </p>
             {s.closedFastLaterMerged > 0 && (
               <p><strong>{s.closedFastLaterMerged} of these {s.strangers} people had a pull request merged here later,</strong> so the project did want their work.</p>
             )}
