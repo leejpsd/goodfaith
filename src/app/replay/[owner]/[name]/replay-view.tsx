@@ -50,16 +50,29 @@ export function ReplayView({ owner, name }: { owner: string; name: string }) {
         A read-only replay. <strong>This project has not installed Goodfaith and knows nothing about it.</strong> It uses the demo&apos;s $2, $5 and $25 amounts, read only what was public when each pull request opened, and judges no person. {result.model ? `Model: ${result.model}.` : ''}
       </p>
       <section className="card">
-        <h2>Of the last {result.looked} pull requests, {result.strangersFound >= 50 ? 'at least 50' : result.strangersFound} came from people new to this project.</h2>
-        <p>Those would have waited for a free vouch or a refundable hold, and the rest would have gone straight to review.{result.strangersFound > s.strangers ? ` This shows the latest ${s.strangers}.` : ''}</p>
-        {s.open > 0 && s.oldestOpenDays !== null && (
-          <p><strong>{s.open} of these {s.strangers} are still open,</strong> the oldest for {s.oldestOpenDays} days.</p>
-        )}
-        {s.merged > 0 && (
-          <p><strong>{s.merged} of them were merged.</strong> They would have held {money(s.meanMergedCents)} on average, and {s.mergedAtMost} would have been asked for the maximum, all of it released at review.</p>
-        )}
-        {s.closed > 0 && (
-          <p><strong>{s.closed} were closed without merging.</strong> They would have held {money(s.meanClosedCents)} on average, and {s.closedHigh} would have been asked for the maximum.</p>
+        {result.mode === 'closed_door' ? (
+          <>
+            <h2>Of the last {result.looked} pull requests, {result.strangersFound >= 50 ? 'at least 50' : result.strangersFound} from people new to this project were closed within an hour of opening.</h2>
+            <p>This project closes most newcomers&apos; pull requests at once, before any review. Goodfaith would keep that rule as the free door, and add a second one: a refundable hold.{result.strangersFound > s.strangers ? ` This shows the latest ${s.strangers}.` : ''}</p>
+            <p><strong>The model put {s.closedFastLow} of these {s.strangers} in the low band.</strong> Each could have reached review for a {money(200)} hold, released in full by any review.</p>
+            {s.closedFastLaterMerged > 0 && (
+              <p><strong>{s.closedFastLaterMerged} of these {s.strangers} people had a pull request merged here later,</strong> so the project did want their work.</p>
+            )}
+          </>
+        ) : (
+          <>
+            <h2>Of the last {result.looked} pull requests, {result.strangersFound >= 50 ? 'at least 50' : result.strangersFound} came from people new to this project.</h2>
+            <p>Those would have waited for a free vouch or a refundable hold, and the rest would have gone straight to review.{result.strangersFound > s.strangers ? ` This shows the latest ${s.strangers}.` : ''}</p>
+            {s.open > 0 && s.oldestOpenDays !== null && (
+              <p><strong>{s.open} of these {s.strangers} are still open,</strong> the oldest for {s.oldestOpenDays} days.</p>
+            )}
+            {s.merged > 0 && (
+              <p><strong>{s.merged} of them were merged.</strong> They would have held {money(s.meanMergedCents)} on average, and {s.mergedAtMost} would have been asked for the maximum, all of it released at review.</p>
+            )}
+            {s.closed > 0 && (
+              <p><strong>{s.closed} were closed without merging.</strong> They would have held {money(s.meanClosedCents)} on average, and {s.closedHigh} would have been asked for the maximum.</p>
+            )}
+          </>
         )}
         <p className="muted">Closed does not mean bad, and merged does not mean good. {result.rows.length < 5 ? 'This is too few pull requests to say much.' : 'This is a small recent sample, and the published evaluation is the larger test.'}</p>
       </section>
@@ -73,7 +86,7 @@ export function ReplayView({ owner, name }: { owner: string; name: string }) {
               <tr key={row.number}>
                 <td className="note"><a href={row.url}>#{row.number}</a> {row.title}</td>
                 <td>{row.openedAt}</td>
-                <td>{OUTCOME[row.outcome]}</td>
+                <td>{row.closedFast ? 'Closed within an hour' : OUTCOME[row.outcome]}{row.laterMerged ? ', and merged here later' : ''}</td>
                 <td>{row.band ? BAND[row.band] : 'No read'}</td>
                 <td>{money(row.amountCents)}</td>
                 <td className="note">{row.reason ?? 'The diff from when it opened could not be read.'}{row.flagged ? ' Flagged: has text aimed at AI reviewers.' : ''}</td>

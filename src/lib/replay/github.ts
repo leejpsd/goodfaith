@@ -32,13 +32,20 @@ interface ApiPull {
   created_at: string;
   state: string;
   merged_at: string | null;
+  closed_at: string | null;
 }
 
-export async function listRecentPulls(repo: string): Promise<ListedPull[]> {
-  const { json } = await get<ApiPull[]>(`/repos/${repo}/pulls?state=all&sort=created&direction=desc&per_page=100`);
-  return (json ?? []).flatMap((pull) =>
+// Up to three pages, so a project that closes strangers at once still shows enough of them.
+export async function listRecentPulls(repo: string, pages = 3): Promise<ListedPull[]> {
+  const all: ApiPull[] = [];
+  for (let page = 1; page <= pages; page++) {
+    const { json } = await get<ApiPull[]>(`/repos/${repo}/pulls?state=all&sort=created&direction=desc&per_page=100&page=${page}`);
+    all.push(...(json ?? []));
+    if (!json || json.length < 100) break;
+  }
+  return all.flatMap((pull) =>
     pull.user
-      ? [{ number: pull.number, title: pull.title, url: pull.html_url, author: pull.user.login, authorType: pull.user.type, association: pull.author_association, createdAt: pull.created_at, state: pull.state, mergedAt: pull.merged_at }]
+      ? [{ number: pull.number, title: pull.title, url: pull.html_url, author: pull.user.login, authorType: pull.user.type, association: pull.author_association, createdAt: pull.created_at, state: pull.state, mergedAt: pull.merged_at, closedAt: pull.closed_at }]
       : [],
   );
 }

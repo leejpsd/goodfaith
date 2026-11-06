@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outcomeOf, outsideAuthors, readRepo, stripHandles, summarize, toRow, type ListedPull, type ReplayRow } from './replay';
+import { closedFast, outcomeOf, outsideAuthors, readRepo, stripHandles, summarize, toRow, type ListedPull, type ReplayRow } from './replay';
 
 const pull = (over: Partial<ListedPull> = {}): ListedPull => ({
   number: 1,
@@ -11,6 +11,7 @@ const pull = (over: Partial<ListedPull> = {}): ListedPull => ({
   createdAt: '2026-10-01T00:00:00Z',
   state: 'closed',
   mergedAt: null,
+  closedAt: null,
   ...over,
 });
 
@@ -71,10 +72,25 @@ describe('summarize', () => {
 
   it('compares what merged and closed pull requests would have held', () => {
     const s = summarize([row('merged', 'low', 200), row('merged', 'high', 2500), row('closed', 'high', 2500), row('closed', 'medium', 500), { ...row('open', 'low', 200), openedAt: '2026-10-01' }, row('closed', null, null)], new Date('2026-10-11T00:00:00Z'));
-    expect(s).toEqual({ strangers: 6, open: 1, oldestOpenDays: 10, merged: 2, mergedAtMost: 1, closed: 2, closedHigh: 1, meanMergedCents: 1350, meanClosedCents: 1500 });
+    expect(s).toEqual({ strangers: 6, open: 1, oldestOpenDays: 10, merged: 2, mergedAtMost: 1, closed: 2, closedHigh: 1, meanMergedCents: 1350, meanClosedCents: 1500, closedFast: 0, closedFastLow: 0, closedFastLaterMerged: 0 });
   });
 
   it('copes with nothing to average', () => {
     expect(summarize([]).meanMergedCents).toBeNull();
+  });
+});
+
+describe('closedFast', () => {
+  it('counts a pull request closed unmerged within the hour', () => {
+    expect(closedFast(pull({ closedAt: '2026-10-01T00:00:30Z' }))).toBe(true);
+    expect(closedFast(pull({ closedAt: '2026-10-01T02:00:00Z' }))).toBe(false);
+    expect(closedFast(pull({ closedAt: '2026-10-01T00:00:30Z', mergedAt: '2026-10-01T00:00:30Z' }))).toBe(false);
+    expect(closedFast(pull({ state: 'open' }))).toBe(false);
+  });
+
+  it('is summarised with who got in later', () => {
+    const base = toRow(pull({ closedAt: '2026-10-01T00:00:30Z' }), { ...triage, band: 'low' }, true);
+    const s = summarize([base, { ...base, band: 'high', laterMerged: false }, toRow(pull(), triage)]);
+    expect(s).toMatchObject({ closedFast: 2, closedFastLow: 1, closedFastLaterMerged: 1 });
   });
 });

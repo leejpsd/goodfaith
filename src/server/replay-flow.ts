@@ -2,7 +2,7 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { replays } from '@/db/schema';
 import { factsAtOpen, isPublicRepo, listRecentPulls, searchCounts } from '@/lib/replay/github';
-import { outsideAuthors, REPLAY_SIZE, toRow, type ListedPull, type ReplayResult, type ReplayRow } from '@/lib/replay/replay';
+import { CLOSED_DOOR_MIN, closedFast, outsideAuthors, REPLAY_SIZE, toRow, type ListedPull, type ReplayResult, type ReplayRow } from '@/lib/replay/replay';
 import { runTriage, type Triage } from '@/lib/triage/triage';
 
 // Each new repository costs model calls and GitHub requests, so the page has a daily ceiling. A
@@ -41,12 +41,16 @@ export async function readReplay(repo: string) {
 
 async function runReplay(repo: string): Promise<void> {
   const pulls = await listRecentPulls(repo);
-  const outside = outsideAuthors(pulls).slice(0, CANDIDATES);
+  const fast = outsideAuthors(pulls).filter(closedFast);
+  const closedDoor = fast.length >= CLOSED_DOOR_MIN;
+  const outside = (closedDoor ? fast : outsideAuthors(pulls)).slice(0, CANDIDATES);
 
   // Today's association cannot say who was new at the time, so this asks about the past directly.
   const inRepo = (pull: ListedPull) => `repo:${repo} is:pr is:merged author:${pull.author} created:<${pull.createdAt.slice(0, 10)}`;
   const anywhere = (pull: ListedPull) => `is:pr is:merged author:${pull.author} merged:<${pull.createdAt.slice(0, 10)}`;
-  const counts = await searchCounts([...new Set(outside.flatMap((pull) => [inRepo(pull), anywhere(pull)]))]);
+  // On a closed door, whether the same person got in later, which says the first one was in good faith.
+  const later = (pull: ListedPull) => `repo:${repo} is:pr is:merged author:${pull.author} created:>${pull.createdAt.slice(0, 10)}`;
+  const counts = await searchCounts([...new Set(outside.flatMap((pull) => [inRepo(pull), anywhere(pull), ...(closedDoor ? [later(pull)] : [])]))]);
   const allStrangers = outside.filter((pull) => (counts.get(inRepo(pull)) ?? 0) === 0);
   const strangers = allStrangers.slice(0, REPLAY_SIZE);
 
@@ -60,11 +64,11 @@ async function runReplay(repo: string): Promise<void> {
         const facts = await factsAtOpen(repo, pull, counts.get(anywhere(pull)) ?? 0).catch(() => null);
         const triage: Triage | null = facts ? await runTriage(facts) : null;
         if (triage) model = triage.model;
-        rows.push(toRow(pull, triage));
+        rows.push(toRow(pull, triage, closedDoor ? (counts.get(later(pull)) ?? 0) > 0 : null));
       }
     }),
   );
 
-  const result: ReplayResult = { repo, at: new Date().toISOString(), model, looked: pulls.length, strangersFound: allStrangers.length, rows: rows.sort((a, b) => b.number - a.number) };
+  const result: ReplayResult = { repo, at: new Date().toISOString(), model, looked: pulls.length, strangersFound: allStrangers.length, mode: closedDoor ? 'closed_door' : 'recent', rows: rows.sort((a, b) => b.number - a.number) };
   await db().update(replays).set({ status: 'done', result, updatedAt: new Date() }).where(eq(replays.repo, repo));
 }

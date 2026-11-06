@@ -16,6 +16,7 @@ export interface ListedPull {
   createdAt: string;
   state: string;
   mergedAt: string | null;
+  closedAt: string | null;
 }
 
 export interface ReplayRow {
@@ -29,6 +30,11 @@ export interface ReplayRow {
   reason: string | null;
   brief: string | null;
   flagged: boolean;
+  // Closed unmerged within an hour of opening, which on a project that gates strangers means
+  // before anyone reviewed it.
+  closedFast?: boolean;
+  // Whether the same author had a pull request merged here afterwards. Only asked on a closed door.
+  laterMerged?: boolean | null;
 }
 
 export interface ReplayResult {
@@ -38,8 +44,18 @@ export interface ReplayResult {
   looked: number;
   // How many of those came from people new to the project. `rows` shows the latest of them.
   strangersFound: number;
+  // A project that closes most strangers' pull requests at once gets a replay of those, since
+  // they are the people a second door is for.
+  mode?: 'closed_door' | 'recent';
   rows: ReplayRow[];
 }
+
+export const CLOSED_FAST_MS = 3_600_000;
+// Fewer than this many fast closes in the recent pull requests is ordinary housekeeping, not a door.
+export const CLOSED_DOOR_MIN = 5;
+
+export const closedFast = (pull: Pick<ListedPull, 'mergedAt' | 'closedAt' | 'createdAt'>) =>
+  !pull.mergedAt && pull.closedAt !== null && Date.parse(pull.closedAt) - Date.parse(pull.createdAt) < CLOSED_FAST_MS;
 
 const INSIDE = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
@@ -56,8 +72,10 @@ export function outcomeOf(pull: Pick<ListedPull, 'state' | 'mergedAt'>): ReplayR
   return pull.state === 'closed' ? 'closed' : 'open';
 }
 
-export function toRow(pull: ListedPull, triage: TriageOutput | null): ReplayRow {
+export function toRow(pull: ListedPull, triage: TriageOutput | null, laterMerged: boolean | null = null): ReplayRow {
   return {
+    closedFast: closedFast(pull),
+    laterMerged,
     number: pull.number,
     title: stripHandles(pull.title),
     url: pull.url,
@@ -93,6 +111,9 @@ export interface ReplaySummary {
   closedHigh: number;
   meanMergedCents: number | null;
   meanClosedCents: number | null;
+  closedFast: number;
+  closedFastLow: number;
+  closedFastLaterMerged: number;
 }
 
 const mean = (values: number[]) => (values.length ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : null);
@@ -113,6 +134,9 @@ export function summarize(rows: ReplayRow[], now = new Date()): ReplaySummary {
     closedHigh: closed.filter((row) => row.band === 'high').length,
     meanMergedCents: mean(merged.map((row) => row.amountCents!)),
     meanClosedCents: mean(closed.map((row) => row.amountCents!)),
+    closedFast: rows.filter((row) => row.closedFast).length,
+    closedFastLow: rows.filter((row) => row.closedFast && row.band === 'low').length,
+    closedFastLaterMerged: rows.filter((row) => row.closedFast && row.laterMerged).length,
   };
 }
 
