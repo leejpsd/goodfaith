@@ -74,6 +74,8 @@ export const holds = pgTable('holds', {
   state: text('state').$type<StoredHoldState>().notNull(),
   cents: integer('cents').notNull(),
   orderId: text('order_id').notNull(),
+  // Set once an unanswered approval has been checked at PayPal, after which that order is spent.
+  orderCheckedAt: timestamp('order_checked_at', { withTimezone: true }),
   authorizationId: text('authorization_id'),
   // PayPal's stable ID for the account, which limits open holds across every project.
   payerId: text('payer_id'),
@@ -81,6 +83,7 @@ export const holds = pgTable('holds', {
   reauthorized: boolean('reauthorized').notNull().default(false),
   appealEndsAt: timestamp('appeal_ends_at', { withTimezone: true }),
   captureId: text('capture_id'),
+  // Set once the capture is complete at PayPal. A pending capture leaves it empty, so no payout starts.
   capturedAt: timestamp('captured_at', { withTimezone: true }),
   refundId: text('refund_id'),
   payoutBatchId: text('payout_batch_id'),
@@ -91,7 +94,7 @@ export const holds = pgTable('holds', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type LedgerKind = 'vouched' | 'held' | 'voided' | 'forfeit_opened' | 'appealed' | 'upheld' | 'captured' | 'paid_out' | 'refunded' | 'disputed' | 'dispute_resolved';
+export type LedgerKind = 'vouched' | 'held' | 'voided' | 'forfeit_opened' | 'appealed' | 'upheld' | 'captured' | 'paid_out' | 'payout_failed' | 'refunded' | 'disputed' | 'dispute_resolved';
 
 // The public record. Rows are only ever added, and a reconciliation fills in `reconciledAt`.
 export const ledgerEvents = pgTable(

@@ -1,0 +1,1 @@
+ALTER TABLE "holds" ADD COLUMN "order_checked_at" timestamp with time zone;

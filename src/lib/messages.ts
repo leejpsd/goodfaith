@@ -51,7 +51,10 @@ export const capturedComment = (input: { login: string; cents: number; by: strin
 
 export const paidOutComment = (cents: number) => `The captured ${money(cents)} was paid out to the project through PayPal.`;
 
-export const payoutFailedComment = (cents: number) => `PayPal could not pay out the captured ${money(cents)}. The money did not reach the project, and an operator needs to look at it.`;
+export const payoutFailedComment = (cents: number) =>
+  `PayPal could not pay out the captured ${money(cents)}, so it did not reach the project. It is still refundable: a maintainer can send it back with \`!reverse\`.`;
+
+export const captureDeniedComment = (cents: number) => `PayPal refused the capture of the ${money(cents)} hold after all, so no money moved and the hold is released.`;
 
 export const captureFailedComment = (cents: number) =>
   `PayPal refused to capture the ${money(cents)} hold, so no money moved. The hold stays open until it is released.`;

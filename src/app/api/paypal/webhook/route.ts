@@ -48,8 +48,11 @@ export async function POST(request: Request) {
       return 'failed' as const;
     },
   );
-  // PayPal resends what takes over 30 seconds. Slow work carries on after the answer, and a slow
-  // GitHub is the usual cause, since the money state is saved before GitHub hears about it.
+  // PayPal gives up on an answer after 30 seconds. Slow work carries on, and a slow GitHub is the
+  // usual cause, since the money state is saved before GitHub hears about it. A slow answer asks
+  // PayPal to send again: if the work finished, the repeat is a duplicate, and if it failed, the
+  // delivery was forgotten above, so the repeat runs it.
   const waited = await Promise.race([work, new Promise<'slow'>((done) => setTimeout(() => done('slow'), ANSWER_WITHIN_MS))]);
-  return waited === 'failed' ? new Response('failed', { status: 500 }) : Response.json({ ok: true });
+  if (waited === 'done') return Response.json({ ok: true });
+  return new Response(waited, { status: waited === 'slow' ? 503 : 500 });
 }

@@ -4,6 +4,7 @@ import {
   CheckoutPaymentIntent,
   Client,
   Environment,
+  type Order,
   OrdersController,
   PaymentsController,
   PaypalExperienceUserAction,
@@ -28,9 +29,17 @@ export class PayPalError extends Error {
     this.issue = issue;
     this.debugId = debugId;
   }
+  // Status 0 is a timeout or a lost connection, so PayPal may have acted. Only a repeat with the
+  // same request ID can tell, and that repeat is safe.
   get retryable() {
-    return this.status === 429 || this.status >= 500;
+    return this.status === 0 || this.status === 429 || this.status >= 500;
   }
+}
+
+export interface Authorization {
+  authorizationId: string;
+  status: string;
+  payerId: string | null;
 }
 
 export interface WebhookHeaders {
@@ -45,7 +54,9 @@ export interface WebhookHeaders {
 // a request ID, so a retry returns the first result and cannot move money twice.
 export interface PayPal {
   createOrder(input: { cents: number; description: string; referenceId: string; returnUrl: string; cancelUrl: string }): Promise<string>;
-  authorizeOrder(orderId: string, requestId: string, options?: { simulateDecline?: boolean }): Promise<{ authorizationId: string; status: string; payerId: string | null }>;
+  authorizeOrder(orderId: string, requestId: string, options?: { simulateDecline?: boolean }): Promise<Authorization>;
+  // An order's authorization, if PayPal made one, for when the app never heard the answer.
+  findAuthorization(orderId: string): Promise<Authorization | null>;
   voidAuthorization(authorizationId: string, requestId: string): Promise<void>;
   reauthorize(authorizationId: string, cents: number, requestId: string): Promise<string>;
   capture(authorizationId: string, cents: number, requestId: string): Promise<{ captureId: string; status: string }>;
@@ -96,10 +107,17 @@ function parseError(text: string): ErrorBody {
   }
 }
 
-async function call<T>(operation: string, path: string, body: string | undefined, requestId: string): Promise<T> {
+// PayPal's Retry-After is in seconds. A long one is cut short, since a person may be waiting.
+function retryAfterMs(header: string | null): number {
+  const seconds = Number(header);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 10_000) : 0;
+}
+
+async function call<T>(operation: string, path: string, body: string | undefined, requestId: string, { attempts = ATTEMPTS, timeoutMs = 30_000 } = {}): Promise<T> {
   let failure: PayPalError | undefined;
-  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    if (attempt) await sleep(500 * 2 ** attempt);
+  let wait = 0;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt) await sleep(Math.max(wait, 500 * 2 ** attempt));
     let r: Response;
     try {
       r = await fetch(`${API}${path}`, {
@@ -111,13 +129,14 @@ async function call<T>(operation: string, path: string, body: string | undefined
           'PayPal-Request-Id': requestId,
         },
         body: body ?? '{}',
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
       failure = new PayPalError(operation, 0, 'network', undefined);
       continue;
     }
     if (r.status === 401) cached = undefined;
+    wait = retryAfterMs(r.headers.get('retry-after'));
     const text = await r.text();
     if (r.ok) return (text ? JSON.parse(text) : {}) as T;
 
@@ -174,6 +193,12 @@ async function viaSdk<T>(operation: string, run: () => Promise<{ result: T }>): 
 
 const REPRESENTATION = 'return=representation';
 
+function authorizationOf(order: Order): Authorization | null {
+  const authorization = order.purchaseUnits?.[0]?.payments?.authorizations?.[0];
+  if (!authorization?.id) return null;
+  return { authorizationId: authorization.id, status: authorization.status ?? 'CREATED', payerId: order.paymentSource?.paypal?.accountId ?? order.payer?.payerId ?? null };
+}
+
 // PayPal's own negative testing: the sandbox answers as if the payment method was declined.
 const DECLINE = JSON.stringify({ mock_application_codes: 'INSTRUMENT_DECLINED' });
 
@@ -188,7 +213,8 @@ export function paypalClient(): PayPal {
           prefer: REPRESENTATION,
           body: {
             intent: CheckoutPaymentIntent.Authorize,
-            purchaseUnits: [{ referenceId, description, amount: usd(cents) }],
+            // custom_id comes back on the authorization and the capture, so either one leads to the hold.
+            purchaseUnits: [{ referenceId, customId: referenceId, description, amount: usd(cents) }],
             paymentSource: {
               paypal: {
                 experienceContext: {
@@ -210,9 +236,12 @@ export function paypalClient(): PayPal {
       const order = await viaSdk('authorize order', () =>
         orders().authorizeOrder({ id: orderId, paypalRequestId: requestId, prefer: REPRESENTATION, body: {}, ...(options?.simulateDecline ? { paypalMockResponse: DECLINE } : {}) }),
       );
-      const authorization = order.purchaseUnits?.[0]?.payments?.authorizations?.[0];
-      if (!authorization?.id) throw new PayPalError('authorize order', 200, 'NO_AUTHORIZATION', undefined);
-      return { authorizationId: authorization.id, status: authorization.status ?? 'CREATED', payerId: order.paymentSource?.paypal?.accountId ?? order.payer?.payerId ?? null };
+      const authorization = authorizationOf(order);
+      if (!authorization) throw new PayPalError('authorize order', 200, 'NO_AUTHORIZATION', undefined);
+      return authorization;
+    },
+    async findAuthorization(orderId) {
+      return authorizationOf(await viaSdk('get order', () => orders().getOrder({ id: orderId })));
     },
     async voidAuthorization(authorizationId, requestId) {
       await viaSdk('void', () => payments().voidPayment({ authorizationId, paypalRequestId: requestId, prefer: REPRESENTATION }));
@@ -273,7 +302,8 @@ export function paypalClient(): PayPal {
         webhook_id: webhookId,
       });
       const body = `${envelope.slice(0, -1)},"webhook_event":${rawBody}}`;
-      const j = await call<{ verification_status: string }>('verify webhook', '/v1/notifications/verify-webhook-signature', body, randomUUID());
+      // Short, so the check and the work both fit inside the 30 seconds PayPal waits for an answer.
+      const j = await call<{ verification_status: string }>('verify webhook', '/v1/notifications/verify-webhook-signature', body, randomUUID(), { attempts: 2, timeoutMs: 8_000 });
       return j.verification_status === 'SUCCESS';
     },
   };

@@ -33,7 +33,9 @@ declare module 'react' {
 }
 
 const MESSAGES: Record<string, string> = {
-  declined: 'PayPal declined that payment method, and nothing was held. You can try again.',
+  declined: 'PayPal declined that payment method, and nothing was held. Place the hold again and choose a different payment method in PayPal, or ask for a vouch.',
+  not_approved: 'PayPal did not finish the approval, and nothing was held. Please try again.',
+  pending: 'PayPal is still reviewing this payment, so nothing is held. If it clears later, Goodfaith releases it on its own.',
   not_waiting: 'This pull request no longer needs a hold, and nothing was held.',
   stale_order: 'That approval is out of date, and nothing was held. Please try again.',
   not_found: 'This hold page is no longer valid.',
@@ -41,11 +43,18 @@ const MESSAGES: Record<string, string> = {
   cancelled: 'You left PayPal, so nothing was held.',
 };
 const FAILED = 'PayPal could not finish this, and nothing was held. Please try again, or ask for a vouch instead.';
+// PayPal may have acted on an approval whose answer was lost, so this never says nothing was held.
+const UNKNOWN = 'PayPal did not answer in time, so it is not clear yet whether the hold went through. Refresh this page in a minute. If PayPal holds money that this page does not show, Goodfaith releases it within half an hour.';
 
-async function post(url: string, body?: unknown) {
-  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
-  const json = (await response.json().catch(() => ({}))) as { orderId?: string; refused?: string };
-  return { ok: response.ok, ...json };
+// A server error or a lost connection reads as unavailable: the outcome is unknown, not refused.
+async function post(url: string, body?: unknown): Promise<{ ok: boolean; orderId?: string; refused?: string }> {
+  try {
+    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    const json = (await response.json().catch(() => ({}))) as { orderId?: string; refused?: string };
+    return { ok: response.ok, ...json, refused: json.refused ?? (response.status >= 500 ? 'unavailable' : undefined) };
+  } catch {
+    return { ok: false, refused: 'unavailable' };
+  }
 }
 
 export function HoldButton({ pullRequestId, clientId, amount, canSimulateDecline }: { pullRequestId: string; clientId: string; amount: string; canSimulateDecline: boolean }) {
@@ -68,10 +77,17 @@ export function HoldButton({ pullRequestId, clientId, amount, canSimulateDecline
       session.current = sdk.createPayPalOneTimePaymentSession({
         onApprove: async ({ orderId }) => {
           setWorking(true);
-          const result = await post(`/api/holds/${pullRequestId}/authorize`, { orderId, simulateDecline: simulate.current });
+          // The same order and the same request ID make a repeat safe, so an answer lost on the
+          // way back is asked for again before anyone is told what happened.
+          let result = await post(`/api/holds/${pullRequestId}/authorize`, { orderId, simulateDecline: simulate.current });
+          for (const wait of [1500, 4000]) {
+            if (result.ok || result.refused !== 'unavailable') break;
+            await new Promise((done) => setTimeout(done, wait));
+            result = await post(`/api/holds/${pullRequestId}/authorize`, { orderId, simulateDecline: simulate.current });
+          }
           setWorking(false);
           if (result.ok) router.refresh();
-          else setMessage(MESSAGES[result.refused ?? ''] ?? FAILED);
+          else setMessage(result.refused === 'unavailable' ? UNKNOWN : (MESSAGES[result.refused ?? ''] ?? FAILED));
         },
         onCancel: () => setMessage(MESSAGES.cancelled ?? FAILED),
         onError: (error) => {

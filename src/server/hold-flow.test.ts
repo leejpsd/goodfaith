@@ -7,11 +7,11 @@ import { holds, ledgerEvents, projects, pullRequests } from '@/db/schema';
 import * as schema from '@/db/schema';
 import type { CheckState, GitHub, Permission } from '@/lib/github/client';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
-import { PayPalError, type PayPal } from '@/lib/paypal/client';
+import { PayPalError, type Authorization, type PayPal } from '@/lib/paypal/client';
 import type { PayPalEvent } from '@/lib/paypal/webhook';
 import type { Deps, HoldDeps } from './deps';
 import { onIssueComment, onPullRequest, onPullRequestReview } from './gate-flow';
-import { beginHold, closeOldDemoPulls, confirmHold, onPayPalEvent, reconcile, runDue } from './hold-flow';
+import { beginHold, closeOldDemoPulls, confirmHold, onPayPalEvent, reconcile, releaseStrays, runDue } from './hold-flow';
 
 const db = drizzle(new PGlite(), { schema });
 const DAY = 864e5;
@@ -65,32 +65,45 @@ class FakePayPal implements PayPal {
   requestIds: string[] = [];
   declineAuthorize = false;
   captureError: PayPalError | null = null;
+  captureStatus = 'COMPLETED';
   orders = 0;
   createOrder = async () => `ORDER-${++this.orders}`;
   simulated: boolean[] = [];
   payerId: string | null = null;
   voidError: PayPalError | null = null;
+  authorizationStatus = 'CREATED';
+  // What PayPal holds per order, whether or not the app heard the answer.
+  held = new Map<string, Authorization>();
+  finds: string[] = [];
   authorizeOrder = async (orderId: string, requestId: string, options?: { simulateDecline?: boolean }) => {
     this.calls.push(`authorize ${orderId}`);
     this.requestIds.push(requestId);
     this.simulated.push(options?.simulateDecline === true);
     if (this.declineAuthorize || options?.simulateDecline) throw new PayPalError('authorize order', 422, 'INSTRUMENT_DECLINED', 'debug');
-    return { authorizationId: `AUTH-${orderId}`, status: 'CREATED', payerId: this.payerId };
+    const authorization = { authorizationId: `AUTH-${orderId}`, status: this.authorizationStatus, payerId: this.payerId };
+    this.held.set(orderId, authorization);
+    return authorization;
+  };
+  findAuthorization = async (orderId: string) => {
+    this.finds.push(orderId);
+    return this.held.get(orderId) ?? null;
   };
   voidAuthorization = async (id: string, requestId: string) => {
     this.calls.push(`void ${id}`);
     this.requestIds.push(requestId);
     if (this.voidError) throw this.voidError;
   };
+  reauthorizeError: PayPalError | null = null;
   reauthorize = async (id: string) => {
     this.calls.push(`reauthorize ${id}`);
+    if (this.reauthorizeError) throw this.reauthorizeError;
     return `RE-${id}`;
   };
   capture = async (id: string, _c: number, requestId: string) => {
     this.calls.push(`capture ${id}`);
     this.requestIds.push(requestId);
     if (this.captureError) throw this.captureError;
-    return { captureId: `CAP-${id}`, status: 'COMPLETED' };
+    return { captureId: `CAP-${id}`, status: this.captureStatus };
   };
   refund = async (id: string) => {
     this.calls.push(`refund ${id}`);
@@ -783,5 +796,172 @@ describe('a new commit', () => {
     await placedHold();
     await onPullRequest(deps, prEvent('synchronize'));
     expect(github.lastCheck?.title).toBe('Refundable hold placed');
+  });
+});
+
+describe('answers that are lost or come back unfinished', () => {
+  const timeout = (operation: string) => new PayPalError(operation, 0, 'network', undefined);
+
+  it('repeats a capture that timed out instead of calling it refused', async () => {
+    const pr = await placedHold();
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    const after = new Date((await holdRow(pr.id)).appealEndsAt!.getTime() + 1000);
+    paypal.captureError = timeout('capture');
+    await runDue(hold, after);
+    const waiting = await holdRow(pr.id);
+    expect(waiting.state).toBe('forfeit_pending');
+    expect(waiting.appealEndsAt).not.toBeNull();
+    expect(github.comments.at(-1)).not.toContain('no money moved');
+    paypal.captureError = null;
+    await runDue(hold, after);
+    expect((await holdRow(pr.id)).state).toBe('captured');
+    const ids = paypal.requestIds.filter((id) => id.includes('-capture-'));
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe(ids[1]);
+  });
+
+  it('repeats a payout that timed out instead of calling it failed', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    paypal.payoutError = timeout('payout');
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    const row = await holdRow(pr.id);
+    expect(row.state).toBe('captured');
+    expect(row.capturedAt).not.toBeNull();
+    expect(await ledgerKinds(pr.id)).not.toContain('payout_failed');
+    paypal.payoutError = null;
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    expect((await holdRow(pr.id)).state).toBe('paid_out');
+  });
+
+  it('captures the original authorization when PayPal refuses a reauthorization', async () => {
+    const pr = await placedHold();
+    await db.update(holds).set({ authorizedAt: new Date(Date.now() - 5 * DAY) }).where(eq(holds.pullRequestId, pr.id));
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    const row = await holdRow(pr.id);
+    paypal.reauthorizeError = new PayPalError('reauthorize', 422, 'REAUTHORIZATION_NOT_ALLOWED', 'debug');
+    await runDue(hold, new Date(row.appealEndsAt!.getTime() + 1000));
+    expect(paypal.calls.slice(-2)).toEqual([`reauthorize ${row.authorizationId}`, `capture ${row.authorizationId}`]);
+    expect(await holdRow(pr.id)).toMatchObject({ state: 'captured', authorizationId: row.authorizationId, reauthorized: false });
+  });
+
+  it('pays out a pending capture only once PayPal completes it', async () => {
+    paypal.captureStatus = 'PENDING';
+    const pr = await placedHold();
+    await db.update(projects).set({ payoutReceiver: 'project@example.com' }).where(eq(projects.id, pr.projectId));
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    const ends = (await holdRow(pr.id)).appealEndsAt!;
+    await runDue(hold, new Date(ends.getTime() + 1000));
+    const pending = await holdRow(pr.id);
+    expect(pending).toMatchObject({ state: 'captured', capturedAt: null });
+    await runDue(hold, new Date(ends.getTime() + 3 * DAY));
+    expect(paypal.payouts).toEqual([]);
+
+    await onPayPalEvent(hold, event('PAYMENT.CAPTURE.COMPLETED', { id: pending.captureId! }));
+    const completed = await holdRow(pr.id);
+    expect(completed.capturedAt).not.toBeNull();
+    await runDue(hold, new Date(completed.capturedAt!.getTime() + 2 * DAY));
+    expect(paypal.payouts).toHaveLength(1);
+  });
+
+  it('releases a hold whose pending capture PayPal refused, and says so on the ledger', async () => {
+    paypal.captureStatus = 'PENDING';
+    const pr = await placedHold();
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    await runDue(hold, new Date((await holdRow(pr.id)).appealEndsAt!.getTime() + 1000));
+    const row = await holdRow(pr.id);
+    await onPayPalEvent(hold, event('PAYMENT.CAPTURE.DENIED', { id: row.captureId! }));
+    expect((await holdRow(pr.id)).state).toBe('voided');
+    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured', 'voided']);
+    expect(github.comments.at(-1)).toContain('no money moved');
+    await onIssueComment(deps, say('!reverse it was fine'));
+    expect(paypal.calls.some((c) => c.startsWith('refund'))).toBe(false);
+  });
+
+  it('puts a failed payout back where a maintainer can refund it', async () => {
+    const { pr, capturedAt } = await capturedHold();
+    await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
+    const paid = await holdRow(pr.id);
+    expect(paid.state).toBe('paid_out');
+    await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.UNCLAIMED', { id: 'ITEM-1', payout_batch_id: paid.payoutBatchId! }));
+    expect(await holdRow(pr.id)).toMatchObject({ state: 'captured', capturedAt: null });
+    expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured', 'paid_out', 'payout_failed']);
+    expect(github.comments.at(-1)).toContain('!reverse');
+    await runDue(hold, new Date(capturedAt.getTime() + 4 * DAY));
+    expect(paypal.payouts).toHaveLength(1);
+    await onIssueComment(deps, say('!reverse it never arrived'));
+    expect((await holdRow(pr.id)).state).toBe('refunded');
+  });
+
+  it('asks for another payment method only on a decline', async () => {
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    paypal.authorizeOrder = async () => {
+      throw new PayPalError('authorize order', 422, 'ORDER_NOT_APPROVED', 'debug');
+    };
+    expect(await confirmHold(hold, pr.id, begun.orderId)).toEqual({ refused: 'not_approved' });
+    expect((await holdRow(pr.id)).state).toBe('awaiting_approval');
+  });
+
+  it('takes up an authorization PayPal already made when a repeat comes too late', async () => {
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    paypal.held.set(begun.orderId, { authorizationId: 'AUTH-EARLIER', status: 'CREATED', payerId: null });
+    paypal.authorizeOrder = async () => {
+      throw new PayPalError('authorize order', 422, 'ORDER_ALREADY_AUTHORIZED', 'debug');
+    };
+    expect(await confirmHold(hold, pr.id, begun.orderId)).toEqual({ ok: true });
+    expect(await holdRow(pr.id)).toMatchObject({ state: 'held', authorizationId: 'AUTH-EARLIER' });
+  });
+
+  it('holds nothing while PayPal is still reviewing the payment', async () => {
+    paypal.authorizationStatus = 'PENDING';
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    expect(await confirmHold(hold, pr.id, begun.orderId)).toEqual({ refused: 'pending' });
+    expect((await holdRow(pr.id)).state).toBe('awaiting_approval');
+    expect(await ledgerKinds(pr.id)).toEqual([]);
+  });
+
+  it('releases what an unanswered approval left held before starting a new order', async () => {
+    const pr = await waitingPr();
+    const first = await beginHold(hold, pr.id);
+    if (!('orderId' in first)) throw new Error('no order');
+    // PayPal authorized, and the answer never reached the app.
+    paypal.held.set(first.orderId, { authorizationId: 'AUTH-LOST', status: 'CREATED', payerId: null });
+    const second = await beginHold(hold, pr.id);
+    if (!('orderId' in second)) throw new Error('no order');
+    expect(paypal.calls).toContain('void AUTH-LOST');
+    expect(await ledgerKinds(pr.id)).toEqual(['voided']);
+    expect(await confirmHold(hold, pr.id, second.orderId)).toEqual({ ok: true });
+    expect(await ledgerKinds(pr.id)).toEqual(['voided', 'held']);
+  });
+
+  it('has the clock release an approval still unanswered after a quarter of an hour', async () => {
+    const pr = await waitingPr();
+    const begun = await beginHold(hold, pr.id);
+    if (!('orderId' in begun)) throw new Error('no order');
+    paypal.held.set(begun.orderId, { authorizationId: 'AUTH-LOST', status: 'CREATED', payerId: null });
+    await releaseStrays(hold, new Date(Date.now() + 5 * 60_000));
+    expect(paypal.finds).toEqual([]);
+    await releaseStrays(hold, new Date(Date.now() + 16 * 60_000));
+    await releaseStrays(hold, new Date(Date.now() + 17 * 60_000));
+    expect(paypal.calls.filter((c) => c === 'void AUTH-LOST')).toHaveLength(1);
+    expect(await ledgerKinds(pr.id)).toEqual(['voided']);
+    // The order is spent, so a late approval of it holds nothing new.
+    expect(await confirmHold(hold, pr.id, begun.orderId)).toEqual({ refused: 'stale_order' });
+  });
+
+  it('leaves an abandoned approval alone when PayPal holds nothing on it', async () => {
+    const pr = await waitingPr();
+    await beginHold(hold, pr.id);
+    await releaseStrays(hold, new Date(Date.now() + 16 * 60_000));
+    expect(paypal.finds).toHaveLength(1);
+    expect(paypal.calls.some((c) => c.startsWith('void'))).toBe(false);
+    expect(await ledgerKinds(pr.id)).toEqual([]);
+    const again = await beginHold(hold, pr.id);
+    expect('orderId' in again).toBe(true);
   });
 });

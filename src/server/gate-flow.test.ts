@@ -58,6 +58,7 @@ class UnusedPayPal implements PayPal {
   };
   createOrder = this.fail;
   authorizeOrder = this.fail;
+  findAuthorization = this.fail;
   voidAuthorization = this.fail;
   reauthorize = this.fail;
   capture = this.fail;

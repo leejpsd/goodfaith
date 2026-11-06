@@ -11,6 +11,7 @@ export const LEDGER_LABEL: Record<LedgerKind, string> = {
   upheld: 'Appeal upheld',
   captured: 'Captured',
   paid_out: 'Paid out',
+  payout_failed: 'Payout failed',
   refunded: 'Refunded',
   disputed: 'Dispute opened',
   dispute_resolved: 'Dispute resolved',
