@@ -28,6 +28,7 @@ class FakeGitHub implements GitHub {
     throw new Error('not used here');
   };
   settingsFile = async () => null;
+  isPrivate = async () => false;
   vouchFile = async () => null;
   permission = async (_o: string, _r: string, login: string) => this.permissions[login] ?? 'none';
   comment = async (_o: string, _r: string, _n: number, body: string) => {

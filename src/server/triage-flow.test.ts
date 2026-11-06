@@ -12,7 +12,7 @@ import type { OpenTimeFacts, Triage } from '@/lib/triage/triage';
 import type { Deps } from './deps';
 import { onPullRequest } from './gate-flow';
 import { beginHold, holdAmount } from './hold-flow';
-import { triageOpened } from './triage-flow';
+import { PROJECT_DAILY_TRIAGE, triageOpened } from './triage-flow';
 
 const db = drizzle(new PGlite(), { schema });
 let counter = 0;
@@ -35,6 +35,7 @@ class FakeGitHub implements GitHub {
   next = 1;
   vouchFile = async () => null;
   settingsFile = async () => null;
+  isPrivate = async () => false;
   permission = async () => 'none' as const;
   comment = async (_o: string, _r: string, _n: number, body: string) => {
     this.comments.push(body);
@@ -149,5 +150,32 @@ describe('triage', () => {
     const run = vi.fn(async () => TRIAGE);
     await triageOpened(deps, opened(), run);
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe('the daily ceiling on model calls', () => {
+  it('stops calling the model for a project past its ceiling, and the default amount applies', async () => {
+    await onPullRequest(deps, opened());
+    const { id: projectId } = await project();
+    await db.insert(pullRequests).values(
+      Array.from({ length: PROJECT_DAILY_TRIAGE }, (_, i) => ({
+        projectId,
+        number: 100 + i,
+        authorLogin: `someone-${i}`,
+        authorAssociation: 'FIRST_TIME_CONTRIBUTOR' as const,
+        title: 'Fix',
+        htmlUrl: `https://github.com/owner/${repo}/pull/${100 + i}`,
+        headSha: 'sha',
+        door: 'choose' as const,
+        status: 'waiting' as const,
+        triage: TRIAGE,
+      })),
+    );
+    const run = vi.fn(async () => TRIAGE);
+    await triageOpened(deps, opened(), run);
+    expect(run).not.toHaveBeenCalled();
+    const pr = await row();
+    expect(pr.triage).toBeNull();
+    expect(holdAmount({ pr, project: await project() })).toBe(500);
   });
 });

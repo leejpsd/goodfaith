@@ -20,6 +20,7 @@ export interface GitHub {
   addLabel(owner: string, repo: string, number: number, label: string): Promise<void>;
   removeLabel(owner: string, repo: string, number: number, label: string): Promise<void>;
   prFacts(owner: string, repo: string, number: number, login: string): Promise<OpenTimeFacts>;
+  isPrivate(owner: string, repo: string): Promise<boolean>;
 }
 
 const base64url = (v: string | Buffer) => Buffer.from(v).toString('base64url');
@@ -36,6 +37,18 @@ function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set`);
   return value;
+}
+
+// Which installation of this app covers a repository, or null when it is not installed there.
+export async function installationFor(owner: string, repo: string): Promise<number | null> {
+  const pem = Buffer.from(required('GITHUB_APP_PRIVATE_KEY_B64'), 'base64').toString();
+  const r = await fetch(`${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/installation`, {
+    headers: { Authorization: `Bearer ${appJwt(required('GITHUB_APP_ID'), pem)}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`GitHub installation lookup returned ${r.status}`);
+  return ((await r.json()) as { id: number }).id;
 }
 
 const tokens = new Map<number, { token: string; expiresAt: number }>();
@@ -112,6 +125,9 @@ export function githubFor(installationId: number): GitHub {
       const r = await call('DELETE', `/repos/${owner}/${repo}/issues/${number}/labels/${encodeURIComponent(label)}`);
       // Already gone is the wanted result.
       if (!r.ok && r.status !== 404) throw new Error(`GitHub remove label returned ${r.status}`);
+    },
+    async isPrivate(owner, repo) {
+      return (await json<{ private: boolean }>('GET', `/repos/${owner}/${repo}`)).private;
     },
     async prFacts(owner, repo, number, login) {
       const pr = await json<{ title: string; body: string | null }>('GET', `/repos/${owner}/${repo}/pulls/${number}`);

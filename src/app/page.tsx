@@ -52,6 +52,7 @@ export default async function Home() {
             <Link className="button primary" href="/try">Try it, with no login</Link>
             <Link className="button" href="/replay">Replay a public repository</Link>
           </div>
+          <p className="muted">Maintainers can <Link href="/install">install it on a test repository</Link> in a few minutes.</p>
         </div>
         {release && (
           <figure className="slip" style={{ margin: 0 }}>

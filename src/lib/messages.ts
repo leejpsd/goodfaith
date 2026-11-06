@@ -6,7 +6,7 @@ export const WAITING_LABEL = 'waiting for vouch or hold';
 
 const readableDate = (date: Date) => `${date.toISOString().slice(0, 16).replace('T', ' at ')} UTC`;
 
-export function gateComment(input: { login: string; holdUrl: string; minCents: number; maxCents: number }): string {
+export function gateComment(input: { login: string; holdUrl: string; minCents: number; maxCents: number; sandbox?: boolean }): string {
   return [
     `Welcome, @${input.login}. This project reviews a first pull request after one of these two steps.`,
     '',
@@ -14,6 +14,7 @@ export function gateComment(input: { login: string; holdUrl: string; minCents: n
     '',
     `**2. Or place a refundable hold**, $${toPayPalValue(input.minCents)} to $${toPayPalValue(input.maxCents)}, through PayPal: ${input.holdUrl}`,
     `It is a hold and not a charge. Any good-faith review releases it, merged or not. Only a maintainer can forfeit it, and you can appeal first.`,
+    ...(input.sandbox ? ['', `_This Goodfaith runs on PayPal's sandbox for the PayPal AI Hackathon, so the hold takes a PayPal sandbox account and no real money moves._`] : []),
   ].join('\n');
 }
 

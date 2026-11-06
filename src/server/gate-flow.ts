@@ -1,6 +1,7 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { holds, ledgerEvents, projects, pullRequests, vouches, type PullRequestStatus, type StoredHoldState } from '@/db/schema';
 import { mayUse, parseCommand, type Command } from '@/lib/commands';
+import { DEMO } from '@/lib/demo/constants';
 import { chooseDoor } from '@/lib/gate';
 import type { CheckState } from '@/lib/github/client';
 import { readSettings } from '@/lib/github/config';
@@ -127,7 +128,7 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
       owner,
       repo,
       pr.number,
-      gateComment({ login: pr.user.login, holdUrl: `${deps.appUrl}/hold/${row.id}`, minCents: project.minCents, maxCents: project.maxCents }),
+      gateComment({ login: pr.user.login, holdUrl: `${deps.appUrl}/hold/${row.id}`, minCents: project.minCents, maxCents: project.maxCents, sandbox: owner !== DEMO.owner }),
     );
   } else if (decision.door === 'closed') {
     gateCommentId = await deps.github.comment(owner, repo, pr.number, closedDoorComment(pr.user.login));

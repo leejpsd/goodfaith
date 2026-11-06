@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/try">Try it</Link>
             <Link href="/replay">Replay a repo</Link>
             <Link href="/console">Console</Link>
+            <Link href="/install">Install</Link>
             <Link href="/ledger">Public ledger</Link>
             <a href="https://github.com/leejpsd/goodfaith-demo">Demo repository</a>
             <a href="https://github.com/leejpsd/goodfaith">Source</a>

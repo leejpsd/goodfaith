@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readSettings, type ProjectSettings } from './config';
+import { checkSettings, readSettings, type ProjectSettings } from './config';
 
 const current: ProjectSettings = { minCents: 200, maxCents: 2500, defaultCents: 500, appealDays: 7, payoutReceiver: null, trustEarned: true };
 
@@ -34,5 +34,23 @@ describe('readSettings', () => {
 
   it('lets a project turn earned trust off', () => {
     expect(readSettings('{"trust_earned_elsewhere":false}', current).trustEarned).toBe(false);
+  });
+});
+
+describe('checkSettings', () => {
+  it('says nothing is wrong with a valid file', () => {
+    expect(checkSettings('{"min_cents":300,"default_cents":400,"max_cents":1000}', current)).toEqual({ settings: { ...current, minCents: 300, defaultCents: 400, maxCents: 1000 }, problems: [] });
+  });
+
+  it.each([
+    ['broken JSON', '{', 'not valid JSON'],
+    ['an unknown key', '{"waive":true}', 'Unknown setting: waive'],
+    ['a maximum over the cap', '{"max_cents":999999}', 'at most 10000'],
+    ['a zero-day appeal', '{"appeal_days":0}', 'from 1 to 14'],
+    ['a default outside the bounds', '{"default_cents":5000}', 'minimum, default, maximum'],
+  ])('names the problem with %s, and keeps the current settings', (_name, text, problem) => {
+    const checked = checkSettings(text, current);
+    expect(checked.settings).toEqual(current);
+    expect(checked.problems.join(' ')).toContain(problem);
   });
 });

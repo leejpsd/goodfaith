@@ -283,13 +283,13 @@ h3 {
   counter-reset: step;
 }
 
-.steps li {
+.steps > li {
   display: grid;
   grid-template-columns: 2rem minmax(0, 1fr);
   counter-increment: step;
 }
 
-.steps li::before {
+.steps > li::before {
   content: counter(step);
   color: var(--ink-soft);
   font: 1.4rem/1.2 var(--display);
@@ -782,4 +782,95 @@ paypal-button {
 
 .track-stamp.taken {
   color: #8a3b12;
+}
+
+/* Install */
+.install-steps h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+}
+
+.settings {
+  margin: 1rem 0;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem 1rem;
+  max-width: 44rem;
+}
+
+.settings-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.settings-form .wide {
+  grid-column: 1 / -1;
+}
+
+.settings-form .check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-weight: 400;
+}
+
+.settings-form input[type='number'],
+.settings-form input[type='email'] {
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  color: inherit;
+  font: 1rem var(--typed);
+}
+
+.settings-file {
+  max-width: 44rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font: 0.92rem/1.5 var(--typed);
+}
+
+.settings-actions {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 44rem;
+}
+
+.settings-actions .replay-form {
+  justify-self: stretch;
+}
+
+.install-steps code {
+  display: inline;
+}
+
+.settings-actions .branch {
+  flex: 0 1 8rem;
+}
+
+.button.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.check-result {
+  display: grid;
+  overflow-wrap: anywhere;
+  gap: 0.5rem;
+  max-width: 44rem;
+  margin: 1rem 0 0;
+  padding: 1rem 1rem 1rem 2rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
 }

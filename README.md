@@ -129,14 +129,20 @@ Band accuracy is measured on real public pull requests, under [rules fixed in ad
 
 ## Install it on a project
 
-Goodfaith is a GitHub App, and the hosted one is private to this demo for now. To run your own:
+**On a test repository, with the hosted app.** [goodfaith.onrender.com/install](https://goodfaith.onrender.com/install) installs the GitHub App, builds `.github/goodfaith.json` from a form, and checks what the gate will read before a stranger's pull request does. The hosted app runs on PayPal's sandbox, so a hold there takes a PayPal sandbox account and no real money moves. Each project gets the model's sizing for up to 25 new pull requests a day, and the default amount after that, so one busy repository cannot spend the shared budget.
+
+**Your own deployment:**
 
 1. Host the app, for example with `render.yaml`, which also creates the database.
 2. Register a GitHub App with these settings.
    - Permissions: checks write, issues write, pull requests write, contents read, metadata read.
    - Events: pull request, pull request review, issue comment.
    - Webhook: `https://<your-host>/api/github/webhook`, with a secret.
-3. Create a PayPal sandbox app, and subscribe `https://<your-host>/api/paypal/webhook` to the authorization, capture, payout and dispute events.
+3. Create a PayPal sandbox app with Payouts turned on, and fund its sandbox business account, since payouts draw on that balance. Subscribe `https://<your-host>/api/paypal/webhook` to:
+   - `PAYMENT.AUTHORIZATION.CREATED`, `PAYMENT.AUTHORIZATION.VOIDED`
+   - `PAYMENT.CAPTURE.COMPLETED`, `.PENDING`, `.DECLINED`, `.DENIED`, `.REFUNDED`, `.REVERSED`
+   - `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`, `.FAILED`, `.BLOCKED`, `.DENIED`, `.RETURNED`, `.UNCLAIMED`
+   - `CUSTOMER.DISPUTE.CREATED`, `CUSTOMER.DISPUTE.RESOLVED`
 4. Set the variables in `.env.example`.
 5. Install the app on a repository, and add `.github/goodfaith.json`.
 

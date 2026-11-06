@@ -4,6 +4,11 @@ import { closedDoorComment, gateComment } from './messages';
 describe('gateComment', () => {
   const text = gateComment({ login: 'new-person', holdUrl: 'https://x/hold/1', minCents: 200, maxCents: 2500 });
 
+  it('says a hold is sandbox money on a project outside the demo, and only there', () => {
+    expect(gateComment({ login: 'new-person', holdUrl: 'https://x/hold/1', minCents: 200, maxCents: 2500, sandbox: true })).toContain('PayPal sandbox account');
+    expect(text).not.toContain('sandbox');
+  });
+
   it('offers the free vouch before any money', () => {
     expect(text.indexOf('vouch')).toBeGreaterThan(-1);
     expect(text.indexOf('vouch')).toBeLessThan(text.indexOf('hold'));
