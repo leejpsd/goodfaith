@@ -50,6 +50,9 @@ export interface HoldRow {
   // 1 while the hold is still reserved at PayPal, so a sum counts the open ones.
   open: number;
   amount: number;
+  // The same idea in dollars, and 1 for a hold that went back in full, so tiles can sum them.
+  heldNow: number;
+  returned: number;
   // Exact times, which the timeline widget reads.
   placedAt: string;
   appealEndsAt: string | null;
@@ -124,6 +127,8 @@ export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Da
     state: holdStateLabel(hold.state),
     open: ['held', 'forfeit_pending', 'appealed'].includes(hold.state) ? 1 : 0,
     amount: hold.cents / 100,
+    heldNow: ['held', 'forfeit_pending', 'appealed'].includes(hold.state) ? hold.cents / 100 : 0,
+    returned: ['voided', 'refunded'].includes(hold.state) ? 1 : 0,
     placedAt: hold.authorizedAt.toISOString(),
     appealEndsAt: iso(hold.appealEndsAt),
     capturedAt: iso(hold.capturedAt),
