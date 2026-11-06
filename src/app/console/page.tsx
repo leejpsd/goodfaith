@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { db } from '@/db/client';
 import { holds, ledgerEvents, pullRequests } from '@/db/schema';
-import { bandLabel, entryLabel, moneyEventLabel, statusLabel, toHoldRow, type ConsoleData } from '@/lib/console/data';
+import { bandLabel, entryLabel, moneyEventLabel, statusLabel, toHoldRow, toQueueRow, type ConsoleData } from '@/lib/console/data';
 import { ConsoleLoader } from './console-loader';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +19,12 @@ async function load(): Promise<ConsoleData> {
     .orderBy(desc(ledgerEvents.createdAt))
     .limit(2000);
   return {
+    queue: rows
+      .flatMap(({ pr, hold }) => {
+        const row = toQueueRow(pr, hold);
+        return row ? [row] : [];
+      })
+      .sort((a, b) => a.rank - b.rank || b.pr - a.pr),
     pulls: rows.map(({ pr, hold }) => ({
       number: pr.number,
       title: pr.title,
@@ -29,7 +35,7 @@ async function load(): Promise<ConsoleData> {
       openedAt: pr.createdAt.toISOString().slice(0, 10),
     })),
     holds: rows.flatMap(({ pr, hold }) => {
-      const row = hold && toHoldRow(hold, pr.number);
+      const row = hold && toHoldRow(hold, pr.number, pr.htmlUrl);
       return row ? [row] : [];
     }),
     ledger: events.map(({ event, number }) => ({

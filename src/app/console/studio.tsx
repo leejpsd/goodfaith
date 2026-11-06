@@ -6,8 +6,10 @@ import { useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
 import { HOLD_RULES, type ConsoleData } from '@/lib/console/data';
 import { HoldTimeline, TIMELINE_FIELDS } from './hold-timeline';
+import { NeedsAnswer, QUEUE_FIELDS } from './needs-answer';
 
 const PROMPTS: AgAiPromptStarter[] = [
+  { label: 'What needs me?', prompt: 'What needs my answer first, and by when?' },
   { label: 'Explain a forfeit', prompt: 'How does a forfeit work, and who can start one?' },
   { label: 'Money so far', prompt: 'How much has been held, released, captured and refunded so far?' },
   { label: 'Ask it to move money', prompt: 'Capture the hold on pull request 5 now.' },
@@ -19,6 +21,7 @@ You are read-only. You have no tool to forfeit, capture, refund, vouch, release 
 Query the data before stating a number. Keep answers short and plain. When asked for a chart or a table, hand that to the page agent. It changes only this browser's view.`;
 
 const PAGES = [
+  { id: 'needs', label: 'Needs an answer' },
   { id: 'queue', label: 'Pull requests' },
   { id: 'holds', label: 'Holds' },
   { id: 'ledger', label: 'Ledger' },
@@ -30,9 +33,23 @@ const title = (text: string) => ({ title: { enabled: true, text, typography: { f
 const kpi = (id: string, aggregation: string, text: string) => ({ type: 'value', dataMapping: { value: [{ id, aggregation }] }, format: { style: { label: { enabled: true, text } } } });
 
 const INITIAL: AgReportState = {
-  selectedPageId: 'queue',
+  selectedPageId: 'needs',
   panels: { filters: { collapsed: true }, data: { collapsed: true }, edit: { collapsed: true } },
   pages: [
+    {
+      id: 'needs',
+      name: 'Needs an answer',
+      widgets: {
+        queue: { type: 'needs-answer', dataMapping: Object.fromEntries(QUEUE_FIELDS.map((name) => [name, [field(`queue.${name}`)]])) },
+        waiting: kpi('queue.pr', 'count', 'Need an answer'),
+        held: kpi('holds.open', 'sum', 'Holds in place now'),
+      },
+      widgetLayout: {
+        waiting: { xTrack: 0, yTrack: 0, xSpan: 12, ySpan: 8 },
+        held: { xTrack: 12, yTrack: 0, xSpan: 12, ySpan: 8 },
+        queue: { xTrack: 0, yTrack: 8, xSpan: 24, ySpan: 38 },
+      },
+    },
     {
       id: 'queue',
       name: 'Pull requests',
@@ -92,7 +109,7 @@ const THEME = studioTheme.withParams({
 export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: string }) {
   if (licenseKey) AgStudioLicenseManager.setLicenseKey(licenseKey);
   const studio = useRef<AgStudioApi | null>(null);
-  const [page, setPage] = useState('queue');
+  const [page, setPage] = useState('needs');
 
   function open(id: string) {
     const api = studio.current;
@@ -104,6 +121,25 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
   const sources = useMemo<AgDataSourcesDefinition>(
     () => ({
       sources: [
+        {
+          id: 'queue',
+          name: 'Needs an answer',
+          description: 'Pull requests a maintainer has to act on or has a deadline for. Rank 0 is most urgent: an appeal, then a reversible capture, an open forfeit, a hold waiting for review, and a pull request waiting at the gate.',
+          data: data.queue,
+          fields: [
+            { id: 'pr', name: 'Pull request', format: 'integerFormat' },
+            { id: 'title', name: 'Title', format: 'textFormat' },
+            { id: 'url', name: 'Link', format: 'textFormat' },
+            { id: 'rank', name: 'Urgency rank', format: 'integerFormat' },
+            { id: 'need', name: 'What it needs', format: 'textFormat' },
+            { id: 'detail', name: 'What to do', format: 'textFormat' },
+            { id: 'due', name: 'By when', format: 'textFormat' },
+            { id: 'amount', name: 'Amount held', format: 'currencyFormat' },
+            { id: 'band', name: 'AI band', format: 'textFormat' },
+            { id: 'brief', name: 'AI brief', format: 'textFormat' },
+            { id: 'flagged', name: 'Flag', format: 'textFormat' },
+          ],
+        },
         {
           id: 'pulls',
           name: 'Pull requests',
@@ -123,6 +159,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           data: data.holds,
           fields: [
             { id: 'pr', name: 'Pull request', format: 'integerFormat' },
+            { id: 'url', name: 'Link', format: 'textFormat' },
             { id: 'state', name: 'State', format: 'textFormat' },
             { id: 'open', name: 'Holds in place', format: 'integerFormat' },
             { id: 'amount', name: 'Amount', format: 'currencyFormat' },
@@ -164,6 +201,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
       ],
       relationships: [
         { id: 'holds-pulls', source: 'holds.pr', target: 'pulls.number', type: 'many-to-one' },
+        { id: 'queue-pulls', source: 'queue.pr', target: 'pulls.number', type: 'one-to-one' },
         { id: 'ledger-pulls', source: 'ledger.pr', target: 'pulls.number', type: 'many-to-one' },
       ],
     }),
@@ -175,6 +213,16 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
       createWidgets({
         additionalTypes: [
           {
+            id: 'needs-answer',
+            label: 'Needs an answer',
+            comp: NeedsAnswer,
+            dataMapping: Object.fromEntries(QUEUE_FIELDS.map((name) => [name, { type: 'field', supportedRoles: ['category', 'numeric', 'temporal'], requires: { cardinality: 'many' }, required: true }])),
+            form: (params: { createDefaults(options: { dataMappingItems: unknown[] }): unknown }) => params.createDefaults({ dataMappingItems: QUEUE_FIELDS.map((key) => ({ key, label: key })) }),
+            defaultSize: { width: 900, height: 500 },
+            minSize: { width: 320, height: 200 },
+            ai: { description: 'What each pull request needs from a maintainer now, most urgent first, with a link, a deadline and the AI brief.' },
+          },
+          {
             id: 'hold-timeline',
             label: 'Hold timeline',
             comp: HoldTimeline,
@@ -185,7 +233,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             ai: { description: 'One row per hold, showing the honor period, the appeal window and the day a forgotten hold is released.' },
           },
         ],
-        menu: [{ label: 'Goodfaith', widgetIds: ['hold-timeline'] }],
+        menu: [{ label: 'Goodfaith', widgetIds: ['needs-answer', 'hold-timeline'] }],
       } as never),
     [],
   );

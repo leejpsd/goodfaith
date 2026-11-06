@@ -9,6 +9,7 @@ const LAST_DAY = AUTHORIZATION_DAYS - VOID_BEFORE_EXPIRY_DAYS;
 
 interface HoldPoint {
   pr: number;
+  url: string;
   state: string;
   amount: number;
   placedAt: string;
@@ -16,8 +17,10 @@ interface HoldPoint {
   capturedAt: string | null;
 }
 
-export const TIMELINE_FIELDS = ['pr', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt'] as const;
+export const TIMELINE_FIELDS = ['pr', 'url', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt'] as const;
 const ENDED = new Set(['Captured', 'Paid out', 'Released', 'Refunded']);
+// Money that went back to the contributor is stamped in green, and money taken in rust.
+const STAMP: Record<string, string> = { Released: 'returned', Refunded: 'returned', Captured: 'taken', 'Paid out': 'taken' };
 const MARKS = [0, 7, 14, 21, 28];
 
 // Studio hands date fields back as dates or strings, depending on the field's format.
@@ -52,6 +55,7 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
         setRows(
           (response.results?.rows ?? []).map((row) => ({
             pr: Number(read(row, 'pr')),
+            url: String(read(row, 'url') ?? ''),
             state: String(read(row, 'state')),
             amount: Number(read(row, 'amount')),
             placedAt: toIso(read(row, 'placedAt')) ?? '',
@@ -90,7 +94,7 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
           return (
             <li key={hold.pr} className={ended ? 'ended' : undefined}>
               <div className="timeline-label">
-                <strong>#{hold.pr}</strong> ${hold.amount.toFixed(2)}, {hold.state}
+                {hold.url ? <a href={hold.url} target="_blank" rel="noreferrer"><strong>#{hold.pr}</strong></a> : <strong>#{hold.pr}</strong>} ${hold.amount.toFixed(2)}, {hold.state}
               </div>
               <div
                 className="timeline-track"
@@ -101,6 +105,7 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
                 {!ended && <div className="segment age" style={{ width: at(age) }} />}
                 {!ended && appealEnd !== null && <div className="segment appeal" style={{ left: at(age), width: `calc(${at(appealEnd)} - ${at(age)})` }} />}
                 {hold.capturedAt && <div className="pin" style={{ left: at(dayOf(hold.capturedAt, hold.placedAt)) }} />}
+                {ended && <span className={`track-stamp ${STAMP[hold.state] ?? ''}`}>{hold.state}</span>}
               </div>
             </li>
           );

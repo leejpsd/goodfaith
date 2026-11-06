@@ -1,4 +1,4 @@
-import { AUTHORIZATION_DAYS, HONOR_DAYS, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
+import { AUTHORIZATION_DAYS, HONOR_DAYS, PAYOUT_AFTER_DAYS, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
 
 const DAY = 864e5;
 
@@ -45,6 +45,7 @@ export const moneyEventLabel = (kind: string) => MONEY_EVENT[kind] ?? null;
 
 export interface HoldRow {
   pr: number;
+  url: string;
   state: string;
   // 1 while the hold is still reserved at PayPal, so a sum counts the open ones.
   open: number;
@@ -77,7 +78,24 @@ export interface MoneyRow {
   amount: number;
 }
 
+// One row for each pull request a maintainer has to act on, or has a deadline coming.
+export interface QueueRow {
+  pr: number;
+  title: string;
+  url: string;
+  // Lower comes first: an appeal blocks money, and a reversible capture has a deadline.
+  rank: number;
+  need: string;
+  detail: string;
+  due: string;
+  amount: number;
+  band: string;
+  brief: string;
+  flagged: string;
+}
+
 export interface ConsoleData {
+  queue: QueueRow[];
   pulls: PullRow[];
   holds: HoldRow[];
   ledger: LedgerRow[];
@@ -95,11 +113,12 @@ export function holdDates(placedAt: Date) {
   };
 }
 
-export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: number): HoldRow | null {
+export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: number, url = ''): HoldRow | null {
   if (!hold.authorizedAt) return null;
   const { honorEndsAt, releaseBy } = holdDates(hold.authorizedAt);
   return {
     pr,
+    url,
     state: holdStateLabel(hold.state),
     open: ['held', 'forfeit_pending', 'appealed'].includes(hold.state) ? 1 : 0,
     amount: hold.cents / 100,
@@ -112,6 +131,33 @@ export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Da
     captured: readable(hold.capturedAt),
     releaseBy: readable(releaseBy),
   };
+}
+
+type QueuePull = { number: number; title: string; htmlUrl: string; status: string; triage: { band: string; reviewer_brief: string; instructions_to_ai: string | null } | null };
+type QueueHold = { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null };
+
+// What each open state asks of a maintainer, in plain words. Ended holds ask nothing.
+export function toQueueRow(pr: QueuePull, hold: QueueHold | null): QueueRow | null {
+  const base = {
+    pr: pr.number,
+    title: pr.title,
+    url: pr.htmlUrl,
+    amount: hold?.authorizedAt ? hold.cents / 100 : 0,
+    band: bandLabel(pr.triage?.band ?? 'none'),
+    brief: pr.triage?.reviewer_brief ?? 'No AI brief.',
+    flagged: pr.triage?.instructions_to_ai ? `Flagged: it addresses AI reviewers, "${pr.triage.instructions_to_ai}"` : '',
+  };
+  const state = hold?.authorizedAt ? hold.state : null;
+  if (state === 'appealed') return { ...base, rank: 0, need: 'Appeal needs an answer', detail: 'Nothing can be captured until you comment !release or !uphold.', due: 'Waiting on you' };
+  if (state === 'captured' && hold?.capturedAt) {
+    return { ...base, rank: 1, need: 'Captured, still reversible', detail: 'Comment !reverse to refund it in full. After this date it is paid out, and a payout is final.', due: readable(new Date(hold.capturedAt.getTime() + PAYOUT_AFTER_DAYS * DAY)) };
+  }
+  if (state === 'forfeit_pending') return { ...base, rank: 2, need: 'Forfeit, appeal window open', detail: 'PayPal captures when the window ends, unless the author appeals or you comment !release.', due: readable(hold?.appealEndsAt) };
+  if (state === 'held' && pr.status === 'in_review' && hold?.authorizedAt) {
+    return { ...base, rank: 3, need: 'Hold in place, waiting for a review', detail: 'Any review by a maintainer releases all of it, merged or not.', due: `Released by ${readable(holdDates(hold.authorizedAt).releaseBy)}` };
+  }
+  if (pr.status === 'waiting') return { ...base, rank: 4, need: 'Waiting at the gate', detail: 'Comment !vouch to let them in free, or leave it for them to place a hold.', due: 'No deadline' };
+  return null;
 }
 
 // What a maintainer can ask the agent about. The agent reads these rules and cannot change them.
