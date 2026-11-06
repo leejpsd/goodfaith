@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const data = join(dirname(fileURLToPath(import.meta.url)), 'data');
 const readLines = (file) => (existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
@@ -43,14 +43,14 @@ export function loadResults(scope, model) {
   return { rows, input, output, failed };
 }
 
-const balanced = (rows, isHigh) => {
+export const balanced = (rows, isHigh) => {
   const low = rows.filter((r) => r.set === 'low_effort');
   const control = rows.filter((r) => r.set === 'control');
   if (!low.length || !control.length) return NaN;
   return (low.filter(isHigh).length / low.length + control.filter((r) => !isHigh(r)).length / control.length) / 2;
 };
 
-const ruleFor = ([a, m]) => (r) => r.age < a || r.merges <= m;
+export const ruleFor = ([a, m]) => (r) => r.age < a || r.merges <= m;
 
 export function bestRule(rows) {
   let best = null;
@@ -120,4 +120,4 @@ function report(scope, model) {
   console.log('by label', Object.entries(labels).map(([k, v]) => `${k}: ${v.high}/${v.n} high`).join(', '));
 }
 
-if (process.argv[2]) report(process.argv[2], process.argv[3]);
+if (import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2]) report(process.argv[2], process.argv[3]);

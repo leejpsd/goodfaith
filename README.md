@@ -75,6 +75,8 @@ It has no tool to forfeit, vouch, refuse a door or change a bound. The size of a
 
 Band accuracy is measured on real public pull requests, under [rules fixed in advance](evals/triage/RULES.md). [Their SHA-256 went in a public gist](https://gist.github.com/leejpsd/b55b5aa7b3d4dccf9d0649bbc46010ba) before the first run, so the timestamp shows they came first.
 
+**The result, on 1,316 held-out pull requests.** The model's balanced accuracy was 72.2%, against 64.8% for the best plain rule, an account younger than 30 days or at most one earlier merge. The 95% interval for the difference is 4.2 to 10.4 points, so under the test fixed in advance the model beats the rule. It also misses a lot. It put 52% of maintainer-labelled low-effort pull requests in the high band, and it did worse on those labelled as AI slop (29% to 39%, by label) than on `spam` (62%): a tidy, plausible diff looks careful. In a reading we added after the rules, it put 31 of 419 merged first-timers in the high band, where the rule put 127. [Every miss is listed](evals/triage/RESULTS.md).
+
 ## What it stops, and what it survives
 
 | Case | What happens |
