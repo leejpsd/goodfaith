@@ -1,5 +1,5 @@
+import { readAgentRequest } from '@/lib/console/llm-guard';
 import { fromThisSite, notFromThisSite } from '@/lib/http/same-origin';
-import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +29,6 @@ function overVisitorLimit(request: Request): boolean {
   return entry.used > PER_VISITOR_HOURLY_LIMIT;
 }
 
-const input = z.object({
-  input: z.array(z.unknown()).max(200),
-  instructions: z.string().max(40_000).optional(),
-  tools: z.array(z.object({ type: z.literal('function'), name: z.string(), description: z.string(), parameters: z.unknown(), strict: z.literal(false) })).max(40).optional(),
-  tool_choice: z.unknown().optional(),
-  text: z.unknown().optional(),
-});
-
 export async function POST(request: Request) {
   if (!fromThisSite(request)) return notFromThisSite();
   const raw = await request.text();
@@ -47,8 +39,8 @@ export async function POST(request: Request) {
   } catch {
     json = null;
   }
-  const parsed = input.safeParse(json);
-  if (!parsed.success) return Response.json({ error: { code: 'bad_request', message: 'The request could not be read.' } }, { status: 400 });
+  const body = readAgentRequest(json);
+  if (!body) return Response.json({ error: { code: 'not_this_console', message: "Only this console's assistant can use this route." } }, { status: 403 });
 
   if (overVisitorLimit(request)) return Response.json({ error: { code: 'rate_limited', message: 'Too many questions for now. Try again in a while.' } }, { status: 429 });
 
@@ -65,7 +57,7 @@ export async function POST(request: Request) {
   const upstream = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...parsed.data, model, store: false, max_output_tokens: MAX_OUTPUT_TOKENS }),
+    body: JSON.stringify({ ...body, model, store: false, max_output_tokens: MAX_OUTPUT_TOKENS }),
     signal: AbortSignal.timeout(60_000),
   }).catch(() => null);
   if (!upstream) return Response.json({ error: { code: 'unavailable', message: 'The model did not answer.' } }, { status: 502 });
