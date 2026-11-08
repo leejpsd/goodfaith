@@ -2,7 +2,7 @@
 
 import { AgStudio, AgStudioProvider, createWidgets } from 'ag-studio-react';
 import { AgStudioAiModule, AgStudioLicenseManager, createAiHarness, directLlmRunner, studioTheme, type AgAiHarnessSetup, type AgAiPromptStarter, type AgDataSourcesDefinition, type AgReportState, type AgStudioApi, type AgStudioMode } from 'ag-studio';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
 import { HOLD_RULES, type ConsoleData } from '@/lib/console/data';
 import { HoldTimeline, TIMELINE_FIELDS } from './hold-timeline';
@@ -90,9 +90,9 @@ const INITIAL: AgReportState = {
         open: { xTrack: 0, yTrack: 0, xSpan: 8, ySpan: 6 },
         reserved: { xTrack: 8, yTrack: 0, xSpan: 8, ySpan: 6 },
         returned: { xTrack: 16, yTrack: 0, xSpan: 8, ySpan: 6 },
-        timeline: { xTrack: 0, yTrack: 6, xSpan: 24, ySpan: 16 },
-        states: { xTrack: 0, yTrack: 22, xSpan: 8, ySpan: 18 },
-        list: { xTrack: 8, yTrack: 22, xSpan: 16, ySpan: 18 },
+        timeline: { xTrack: 0, yTrack: 6, xSpan: 24, ySpan: 24 },
+        states: { xTrack: 0, yTrack: 30, xSpan: 8, ySpan: 16 },
+        list: { xTrack: 8, yTrack: 30, xSpan: 16, ySpan: 16 },
       },
     },
     {
@@ -129,13 +129,14 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
   // something switches to edit, where a layout change stays in this browser.
   const [mode, setMode] = useState<AgStudioMode>('view');
 
-  // Studio opens the edit rails wide on the first switch, and the assistant is what this
-  // button is for, so the rails start folded and the dashboard keeps its width.
-  function toggleMode() {
+  // Studio opens the edit rails wide on the first switch, and the assistant is what the button
+  // is for, so the rails fold once edit mode is in place and the dashboard keeps its width.
+  useEffect(() => {
     const api = studio.current;
-    if (mode === 'view' && api) api.setState({ ...api.getState(), panels: { ...api.getState().panels, ...FOLDED } });
-    setMode(mode === 'view' ? 'edit' : 'view');
-  }
+    if (mode !== 'edit' || !api) return;
+    const frame = requestAnimationFrame(() => api.setState({ ...api.getState(), panels: { ...api.getState().panels, ...FOLDED } }));
+    return () => cancelAnimationFrame(frame);
+  }, [mode]);
 
   function open(id: string) {
     const api = studio.current;
@@ -305,7 +306,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
         {PAGES.map(({ id, label }) => (
           <button key={id} type="button" aria-current={page === id ? 'page' : undefined} onClick={() => open(id)}>{label}</button>
         ))}
-        <button type="button" className="console-mode" aria-pressed={mode === 'edit'} onClick={toggleMode}>
+        <button type="button" className="console-mode" aria-pressed={mode === 'edit'} onClick={() => setMode(mode === 'view' ? 'edit' : 'view')}>
           {mode === 'view' ? 'Ask the assistant' : 'Close the assistant'}
         </button>
         <p className="muted">{mode === 'view' ? 'Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.' : 'The assistant is read-only too. Layout changes stay in this browser.'}</p>
