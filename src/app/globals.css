@@ -711,6 +711,114 @@ paypal-button {
 }
 
 /* Needs an answer */
+.matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.92rem;
+}
+
+.matrix-readers {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.matrix-readers button {
+  padding: 0.25rem 0.7rem;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.matrix-readers button[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.matrix table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+}
+
+.matrix th {
+  padding: 0.2rem 0.4rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.matrix thead th:not(:first-child) {
+  text-align: center;
+}
+
+.matrix th span,
+.matrix td span {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.matrix td {
+  padding: 0.45rem;
+  background: color-mix(in srgb, var(--ink) var(--share), transparent);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix td.miss {
+  outline: 2px solid var(--stamp);
+  outline-offset: -2px;
+}
+
+.matrix td.miss:has(button) {
+  padding: 0;
+}
+
+.matrix td button {
+  width: 100%;
+  padding: 0.45rem;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.matrix td button[aria-pressed='true'] {
+  background: var(--stamp);
+  color: var(--surface);
+}
+
+.matrix td button[aria-pressed='true'] span {
+  color: inherit;
+}
+
+.matrix-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.matrix-misses {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.matrix-misses li {
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+}
+
 .queue {
   display: grid;
   gap: 0.75rem;

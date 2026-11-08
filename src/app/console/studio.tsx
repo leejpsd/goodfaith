@@ -6,7 +6,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
 import { LEAD_INSTRUCTIONS } from '@/lib/console/agents';
 import { HOLD_RULES, type ConsoleData } from '@/lib/console/data';
+import { CLOSED_DOORS, EVIDENCE_LABELS, EVIDENCE_MISSES, EVIDENCE_ROWS, EVIDENCE_SCORES, MISS_FIELDS } from '@/lib/console/misses';
 import { HoldTimeline, TIMELINE_FIELDS } from './hold-timeline';
+import { MissMatrix } from './miss-matrix';
 import { NeedsAnswer, QUEUE_FIELDS } from './needs-answer';
 
 const PROMPTS: AgAiPromptStarter[] = [
@@ -15,6 +17,7 @@ const PROMPTS: AgAiPromptStarter[] = [
   { label: 'Money so far', prompt: 'How much has been held, released, captured and refunded so far?' },
   { label: 'Ask it to move money', prompt: 'Capture the hold on goodfaith-demo#5 now.' },
   { label: 'Add a chart', prompt: 'Add a chart of hold amounts by AI band to this page.' },
+  { label: 'Where the AI misses', prompt: 'In the evaluation, how many merged first-timers did the model put in the high band, and how many did the plain rule?' },
 ];
 
 
@@ -25,6 +28,7 @@ const PAGES = [
   { id: 'page-pulls', label: 'Pull requests' },
   { id: 'page-holds', label: 'Holds' },
   { id: 'page-ledger', label: 'Ledger' },
+  { id: 'page-evidence', label: 'Evidence' },
 ];
 
 const field = (id: string) => ({ id });
@@ -105,6 +109,30 @@ const INITIAL: AgReportState = {
       widgetLayout: {
         money: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 18 },
         list: { xTrack: 0, yTrack: 18, xSpan: 24, ySpan: 28 },
+      },
+    },
+    {
+      id: 'page-evidence',
+      name: 'Evidence',
+      widgets: {
+        model: kpi('evidenceScores.model', 'sum', 'The model, balanced accuracy'),
+        rule: kpi('evidenceScores.rule', 'sum', 'Plain account-age rule'),
+        modelHigh: kpi('evidenceScores.modelHighFirstTimers', 'sum', 'Good first-timers the model charged most, of 419'),
+        ruleHigh: kpi('evidenceScores.ruleHighFirstTimers', 'sum', 'Good first-timers the rule charged most, of 419'),
+        matrix: { type: 'miss-matrix', dataMapping: Object.fromEntries(MISS_FIELDS.map((name) => [name, [field(`evaluation.${name}`)]])) },
+        labels: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('evidenceLabels.label')], valueKey: [{ id: 'evidenceLabels.share', aggregation: 'sum' }] }, format: title('Share of each label the model put in the high band, %') },
+        doors: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('closedDoors.band')], valueKey: [{ id: 'closedDoors.band', aggregation: 'count' }] }, format: title('304 newcomers closed by a bot: the band the model picked') },
+        list: { type: 'grid', dataMapping: { cols: ['misses.repo', 'misses.group', 'misses.band', 'misses.reason', 'misses.url'].map(field) } },
+      },
+      widgetLayout: {
+        model: { xTrack: 0, yTrack: 0, xSpan: 6, ySpan: 6 },
+        rule: { xTrack: 6, yTrack: 0, xSpan: 6, ySpan: 6 },
+        modelHigh: { xTrack: 12, yTrack: 0, xSpan: 6, ySpan: 6 },
+        ruleHigh: { xTrack: 18, yTrack: 0, xSpan: 6, ySpan: 6 },
+        matrix: { xTrack: 0, yTrack: 6, xSpan: 15, ySpan: 40 },
+        labels: { xTrack: 15, yTrack: 6, xSpan: 9, ySpan: 20 },
+        doors: { xTrack: 15, yTrack: 26, xSpan: 9, ySpan: 20 },
+        list: { xTrack: 0, yTrack: 46, xSpan: 24, ySpan: 28 },
       },
     },
   ],
@@ -222,6 +250,67 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           ],
         },
         {
+          id: 'evaluation',
+          name: 'Evaluation',
+          description: "A past test of the model on 1,316 public pull requests from other projects, not this project's holds. A miss says nothing about the person who opened that pull request.",
+          data: EVIDENCE_ROWS,
+          fields: [
+            { id: 'repo', name: 'Repository', format: 'textFormat' },
+            { id: 'group', name: 'What really happened', format: 'textFormat' },
+            { id: 'label', name: "Maintainers' label", format: 'textFormat' },
+            { id: 'band', name: 'Band the model picked in the test', format: 'textFormat' },
+            { id: 'rule', name: 'What the plain rule said', format: 'textFormat' },
+            { id: 'miss', name: 'Is a published miss', format: 'integerFormat' },
+            { id: 'url', name: 'Pull request link, misses only', format: 'textFormat' },
+            { id: 'reason', name: "The model's reason, misses only", format: 'textFormat' },
+          ],
+        },
+        {
+          id: 'misses',
+          name: 'Evaluation misses',
+          description: 'The 220 published misses from the evaluation, with a link and the reason the model gave.',
+          data: EVIDENCE_MISSES,
+          fields: [
+            { id: 'repo', name: 'Repository', format: 'textFormat' },
+            { id: 'group', name: 'What really happened', format: 'textFormat' },
+            { id: 'band', name: 'Band the model picked in the test', format: 'textFormat' },
+            { id: 'reason', name: "The model's reason", format: 'textFormat' },
+            { id: 'url', name: 'Pull request link', format: 'textFormat' },
+          ],
+        },
+        {
+          id: 'evidenceScores',
+          name: 'Evaluation scores',
+          description: 'One row of headline results from the evaluation.',
+          data: EVIDENCE_SCORES,
+          fields: [
+            { id: 'model', name: 'Model, balanced accuracy', format: 'percentageFormat' },
+            { id: 'rule', name: 'Plain rule, balanced accuracy', format: 'percentageFormat' },
+            { id: 'modelHighFirstTimers', name: 'Merged first-timers the model put in the high band', format: 'integerFormat' },
+            { id: 'ruleHighFirstTimers', name: 'Merged first-timers the plain rule flagged', format: 'integerFormat' },
+          ],
+        },
+        {
+          id: 'evidenceLabels',
+          name: 'Evaluation by label',
+          data: EVIDENCE_LABELS,
+          fields: [
+            { id: 'label', name: "Maintainers' label", format: 'textFormat' },
+            { id: 'share', name: 'Share placed in the high band, %', format: 'decimalFormat' },
+            { id: 'pulls', name: 'Pull requests', format: 'integerFormat' },
+          ],
+        },
+        {
+          id: 'closedDoors',
+          name: 'Bot-closed newcomers',
+          description: 'Newcomers closed by a bot within an hour on popular public repositories, and the band the model would have picked.',
+          data: CLOSED_DOORS,
+          fields: [
+            { id: 'band', name: 'Band the model would have picked', format: 'textFormat' },
+            { id: 'laterMerged', name: 'Later merged', format: 'integerFormat' },
+          ],
+        },
+        {
           id: 'money',
           name: 'Money',
           description: 'Only the events that reserve or move money. A forfeit or an appeal moves nothing.',
@@ -265,8 +354,18 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             minSize: { width: 320, height: 200 },
             ai: { description: 'One row per hold, showing the honor period, the appeal window and the day a forgotten hold is released.' },
           },
+          {
+            id: 'miss-matrix',
+            label: 'Where the AI misses',
+            comp: MissMatrix,
+            dataMapping: Object.fromEntries(MISS_FIELDS.map((name) => [name, { type: 'field', supportedRoles: ['category', 'numeric', 'temporal'], requires: { cardinality: 'many' }, required: true }])),
+            form: (params: { createDefaults(options: { dataMappingItems: unknown[] }): unknown }) => params.createDefaults({ dataMappingItems: MISS_FIELDS.map((key) => ({ key, label: key })) }),
+            defaultSize: { width: 900, height: 600 },
+            minSize: { width: 420, height: 320 },
+            ai: { description: 'The evaluation on 1,316 public pull requests as a table of what really happened against the band the model picked, beside a plain rule, with each published miss and its reason.' },
+          },
         ],
-        menu: [{ label: 'Goodfaith', widgetIds: ['needs-answer', 'hold-timeline'] }],
+        menu: [{ label: 'Goodfaith', widgetIds: ['needs-answer', 'hold-timeline', 'miss-matrix'] }],
       } as never),
     [],
   );
