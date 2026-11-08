@@ -41,6 +41,8 @@ The ${doors.length} repositories with 1,000 or more stars from the [triage evalu
 | ... **by a bot** | **${bot}** |
 | ... closer not recorded | ${fast - bot - person - author} |
 
+Of the 307 authors closed by a bot, GitHub reports 282 with nothing merged in that project (`NONE`) and 25 as earlier contributors (`CONTRIBUTOR`), one of them with many merges there. So "newcomer" here means outside the project, not always a first-timer.
+
 Bots closed newcomers' pull requests at ${doors.filter((r) => r.byBot > 0).length} projects, and at ${doors.filter((r) => r.byBot >= 5).length} of them five or more times. Reading one bot message at each of those, the reasons were spam or slop detection (juice-shop, scrapy, RSSHub), a no-AI policy (yt-dlp), an application to contribute (postiz), process rules such as being assigned to the issue first (Nettacker, mastg, scikit-learn, uptime-kuma), and a submission checklist (flathub). Some of these are exactly right for those projects. One reply on such a pull request said a spam workflow had closed "a legitimate performance optimization".
 
 ## What a hold would have been
