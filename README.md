@@ -193,6 +193,8 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ![Every hold on one 28-day ruler, stamped with how it ended](docs/console-holds.png)
 
+![The Evidence page: what really happened on 1,316 public pull requests against the band the model picked, with each published miss and its reason](docs/console-evidence.png)
+
 ![Asked to capture a hold, the assistant says it cannot: only a maintainer's public !forfeit can start one](docs/console-refusal.png)
 
 ![Asked for a chart, the assistant hands it to Studio's page and widget agents, which add it to the page in view](docs/console-chart.png)
