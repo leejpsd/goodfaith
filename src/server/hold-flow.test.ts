@@ -669,6 +669,8 @@ describe('a payout', () => {
     expect(row.state).toBe('paid_out');
     expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured', 'paid_out']);
     expect(github.lastCheck?.title).toBe('Paid out to the project');
+    const [paid] = await db.select().from(ledgerEvents).where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'paid_out')));
+    expect(paid?.note).toBe('to the payout account in the project settings');
   });
 
   it('never pays out a capture reversed in the window', async () => {

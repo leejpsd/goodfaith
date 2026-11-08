@@ -398,8 +398,28 @@ main.console {
 }
 
 .console-tabs p {
-  margin: 0 0 0 auto;
+  margin: 0 0 0 0.75rem;
   font-size: 0.85rem;
+}
+
+/* The one control on the bar that changes what the console does, so it looks like a button. */
+.console-tabs .console-mode {
+  margin-left: auto;
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--stamp);
+  border-radius: 3px;
+  color: var(--stamp);
+  font-weight: 600;
+}
+
+.console-tabs .console-mode[aria-pressed='true'] {
+  background: var(--stamp);
+  color: var(--surface);
+}
+
+.console-tabs .console-mode:focus-visible {
+  outline: 2px solid var(--stamp);
+  outline-offset: 2px;
 }
 
 .timeline {

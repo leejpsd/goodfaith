@@ -8,7 +8,7 @@ const DAY = 864e5;
 const LAST_DAY = AUTHORIZATION_DAYS - VOID_BEFORE_EXPIRY_DAYS;
 
 interface HoldPoint {
-  pr: number;
+  pr: string;
   url: string;
   state: string;
   amount: number;
@@ -54,7 +54,7 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
         const read = (row: Record<string, unknown>, name: (typeof TIMELINE_FIELDS)[number]) => row[dataMapping[name]?.[0]?.key ?? name];
         setRows(
           (response.results?.rows ?? []).map((row) => ({
-            pr: Number(read(row, 'pr')),
+            pr: String(read(row, 'pr')),
             url: String(read(row, 'url') ?? ''),
             state: String(read(row, 'state')),
             amount: Number(read(row, 'amount')),
@@ -94,12 +94,12 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
           return (
             <li key={hold.pr} className={ended ? 'ended' : undefined}>
               <div className="timeline-label">
-                {hold.url ? <a href={hold.url} target="_blank" rel="noreferrer"><strong>#{hold.pr}</strong></a> : <strong>#{hold.pr}</strong>} ${hold.amount.toFixed(2)}, {hold.state}
+                {hold.url ? <a href={hold.url} target="_blank" rel="noreferrer"><strong>{hold.pr}</strong></a> : <strong>{hold.pr}</strong>} ${hold.amount.toFixed(2)}, {hold.state}
               </div>
               <div
                 className="timeline-track"
                 role="img"
-                aria-label={`Pull request ${hold.pr}: ${hold.state}. Placed ${hold.placedAt}.${hold.appealEndsAt ? ` Appeal window ends ${hold.appealEndsAt}.` : ''}${hold.capturedAt ? ` Captured ${hold.capturedAt}.` : ''}`}
+                aria-label={`${hold.pr}: ${hold.state}. Placed ${hold.placedAt}.${hold.appealEndsAt ? ` Appeal window ends ${hold.appealEndsAt}.` : ''}${hold.capturedAt ? ` Captured ${hold.capturedAt}.` : ''}`}
               >
                 <div className="segment honor" style={{ width: at(HONOR_DAYS) }} />
                 {!ended && <div className="segment age" style={{ width: at(age) }} />}

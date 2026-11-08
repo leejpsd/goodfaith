@@ -24,6 +24,7 @@ import {
   upheldComment,
 } from '@/lib/messages';
 import { DEMO, FIRST_TRY_NUMBER } from '@/lib/demo/constants';
+import { PAYOUT_NOTE } from '@/lib/ledger-labels';
 import { PayPalError, type Authorization } from '@/lib/paypal/client';
 import { readConfirmation, readDispute, readPayout, readRefusedCapture, type PayPalEvent } from '@/lib/paypal/webhook';
 import { bandCents } from '@/lib/triage/triage';
@@ -381,7 +382,7 @@ async function settleDue(deps: HoldDeps, scope: Scope, row: HoldRow, now: Date):
   if (!saved) return;
 
   if (payingOut) {
-    await record(deps, scope, saved, 'paid_out', { paypalId: saved.payoutBatchId, note: scope.project.payoutReceiver ?? undefined });
+    await record(deps, scope, saved, 'paid_out', { paypalId: saved.payoutBatchId, note: PAYOUT_NOTE });
     await tell(deps, scope, { check: CHECK.paidOut, comment: paidOutComment(saved.cents) });
   } else if (capturing) {
     await record(deps, scope, saved, 'captured', { paypalId: saved.captureId, actor: saved.forfeitedBy, note: saved.forfeitReason ?? undefined });

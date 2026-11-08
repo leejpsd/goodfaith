@@ -25,3 +25,18 @@ export function ledgerAmount(kind: LedgerKind, cents: number): string {
   const value = `$${toPayPalValue(cents)}`;
   return kind !== 'vouched' && NO_PAYPAL_EVENT.includes(kind) ? `${value} at stake` : value;
 }
+
+// What the webhook column says. A vouch or a forfeit has no PayPal event, so "not yet" would mislead.
+export function webhookLabel(kind: LedgerKind, reconciled: boolean): string {
+  if (NO_PAYPAL_EVENT.includes(kind)) return 'no PayPal event';
+  return reconciled ? 'confirmed' : 'not yet';
+}
+
+// The settings file names the payout account, and the ledger points there instead of repeating
+// the address. Older rows stored the address as the note, so this also covers them.
+export const PAYOUT_NOTE = 'to the payout account in the project settings';
+
+export function ledgerNote(kind: LedgerKind, note: string | null): string {
+  if (kind === 'paid_out') return PAYOUT_NOTE;
+  return note ?? 'none';
+}

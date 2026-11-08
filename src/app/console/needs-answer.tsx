@@ -49,7 +49,7 @@ export function NeedsAnswer({ widgetApi, dataMapping }: QueueParams) {
       {items.map((item) => (
         <li key={item.pr} className={`queue-item rank-${item.rankValue}`}>
           <div className="queue-head">
-            <a href={item.url} target="_blank" rel="noreferrer">#{item.pr} {item.title}</a>
+            <a href={item.url} target="_blank" rel="noreferrer">{item.pr} {item.title}</a>
             <span className="queue-money">{item.amountValue > 0 ? `$${item.amountValue.toFixed(2)} held` : 'No money'}</span>
           </div>
           <p className="queue-need"><strong>{item.need}.</strong> {item.detail}</p>

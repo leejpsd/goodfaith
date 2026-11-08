@@ -2,7 +2,11 @@ import { AUTHORIZATION_DAYS, HONOR_DAYS, PAYOUT_AFTER_DAYS, VOID_BEFORE_EXPIRY_D
 
 const DAY = 864e5;
 
+// Several projects share the console, so a number alone names more than one pull request.
+export const prRef = (repo: string, number: number) => `${repo}#${number}`;
+
 export interface PullRow {
+  pr: string;
   number: number;
   title: string;
   url: string;
@@ -44,7 +48,7 @@ const MONEY_EVENT: Partial<Record<string, string>> = { held: 'Held', voided: 'Re
 export const moneyEventLabel = (kind: string) => MONEY_EVENT[kind] ?? null;
 
 export interface HoldRow {
-  pr: number;
+  pr: string;
   url: string;
   state: string;
   // 1 while the hold is still reserved at PayPal, so a sum counts the open ones.
@@ -66,7 +70,7 @@ export interface HoldRow {
 }
 
 export interface LedgerRow {
-  pr: number;
+  pr: string;
   event: string;
   amount: number;
   by: string;
@@ -83,7 +87,7 @@ export interface MoneyRow {
 
 // One row for each pull request a maintainer has to act on, or has a deadline coming.
 export interface QueueRow {
-  pr: number;
+  pr: string;
   title: string;
   url: string;
   // Lower comes first: an appeal blocks money, and a reversible capture has a deadline.
@@ -118,7 +122,7 @@ export function holdDates(placedAt: Date) {
   };
 }
 
-export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: number, url = ''): HoldRow | null {
+export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: string, url = ''): HoldRow | null {
   if (!hold.authorizedAt) return null;
   const { honorEndsAt, releaseBy } = holdDates(hold.authorizedAt);
   return {
@@ -144,9 +148,9 @@ type QueuePull = { number: number; title: string; htmlUrl: string; status: strin
 type QueueHold = { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null };
 
 // What each open state asks of a maintainer, in plain words. Ended holds ask nothing.
-export function toQueueRow(pr: QueuePull, hold: QueueHold | null): QueueRow | null {
+export function toQueueRow(pr: QueuePull, hold: QueueHold | null, ref: string): QueueRow | null {
   const base = {
-    pr: pr.number,
+    pr: ref,
     title: pr.title,
     url: pr.htmlUrl,
     amount: hold?.authorizedAt ? hold.cents / 100 : 0,
@@ -160,7 +164,7 @@ export function toQueueRow(pr: QueuePull, hold: QueueHold | null): QueueRow | nu
     const reversibleUntil = new Date(hold.capturedAt.getTime() + PAYOUT_AFTER_DAYS * DAY);
     return { ...base, rank: 1, dueAt: reversibleUntil.getTime(), need: 'Captured, still reversible', detail: 'Comment !reverse to refund it in full. After this date it is paid out, and a payout is final.', due: `Reversible until ${readable(reversibleUntil)}` };
   }
-  if (state === 'forfeit_pending') return { ...base, rank: 2, dueAt: hold?.appealEndsAt?.getTime() ?? 0, need: 'Forfeit, appeal window open', detail: 'PayPal captures when the window ends, unless the author appeals or you comment !release.', due: `Captures at ${readable(hold?.appealEndsAt)}, unless appealed` };
+  if (state === 'forfeit_pending') return { ...base, rank: 2, dueAt: hold?.appealEndsAt?.getTime() ?? 0, need: 'Your forfeit, appeal window open', detail: 'Your !forfeit asked for this capture. It goes to PayPal when the window ends, unless the author appeals or you comment !release.', due: `Captures at ${readable(hold?.appealEndsAt)}, unless appealed or released` };
   if (state === 'held' && pr.status === 'in_review' && hold?.authorizedAt) {
     return { ...base, rank: 3, dueAt: Date.parse(holdDates(hold.authorizedAt).releaseBy), need: 'Hold in place, waiting for a review', detail: 'Any review by a maintainer releases all of it, merged or not.', due: `Released by ${readable(holdDates(hold.authorizedAt).releaseBy)}` };
   }

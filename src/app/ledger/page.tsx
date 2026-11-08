@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { ledgerEvents, projects, pullRequests, type LedgerKind } from '@/db/schema';
-import { LEDGER_LABEL, ledgerAmount, NO_PAYPAL_EVENT } from '@/lib/ledger-labels';
+import { LEDGER_LABEL, ledgerAmount, ledgerNote, webhookLabel } from '@/lib/ledger-labels';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Public ledger' };
@@ -35,9 +35,9 @@ export default async function LedgerPage() {
               <td>{ledgerAmount(event.kind, event.cents)}</td>
               <td><a href={pr.htmlUrl}>{repo}#{pr.number}</a></td>
               <td>{event.actor ?? 'none'}</td>
-              <td className="note">{event.note ?? 'none'}</td>
+              <td className="note">{ledgerNote(event.kind, event.note)}</td>
               <td>{event.paypalId ?? 'none'}</td>
-              <td>{NO_PAYPAL_EVENT.includes(event.kind) ? 'none' : event.reconciledAt ? 'confirmed' : 'not yet'}</td>
+              <td>{webhookLabel(event.kind, Boolean(event.reconciledAt))}</td>
               <td>{SEARCHABLE.includes(event.kind) ? (event.searchedAt ? 'found' : 'not yet') : 'none'}</td>
             </tr>
           ))}
