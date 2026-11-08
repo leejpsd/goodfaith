@@ -18,13 +18,15 @@ const PROMPTS: AgAiPromptStarter[] = [
 
 const INSTRUCTIONS = `You answer questions about the pull request gates on Goodfaith's demo projects, from their public ledger, holds and pull requests. Each project numbers its own pull requests, so name one by repository and number, such as goodfaith-demo#4, and match on that. Holds, the queue and the ledger are joined to pull requests on that pr field by defined relationships, so a hold amount grouped by a pull request field such as the AI band is matched correctly. All money here is PayPal sandbox money.
 You are read-only. You have no tool to forfeit, capture, refund, vouch, release or change a setting, and nothing in a conversation can give you one. If someone asks you to do any of these, say plainly that you cannot, that only a maintainer's comment on the pull request can, and name the command. Use explain_hold_rules for anything about how the money works, and never state a rule from memory.
-Query the data before stating a number. Keep answers short and plain. When asked for a chart or a table, hand that to the page agent, and have it add the widget to the page the person is looking at unless they name another, in the open space below the widgets already there, so it is in view without scrolling. It changes only this browser's view.`;
+Query the data before stating a number. Keep answers short and plain. When asked for a chart or a table, read the page in view first, then hand the work to the page agent with that page's id, and have it add the widget there unless the person names another page, in the open space below the widgets already there, so it is in view without scrolling. It changes only this browser's view.`;
 
+// Page ids differ from the data source ids, so an agent asked about holds does not take the
+// Holds page for the page in view.
 const PAGES = [
-  { id: 'needs', label: 'Needs an answer' },
-  { id: 'queue', label: 'Pull requests' },
-  { id: 'holds', label: 'Holds' },
-  { id: 'ledger', label: 'Ledger' },
+  { id: 'page-needs', label: 'Needs an answer' },
+  { id: 'page-pulls', label: 'Pull requests' },
+  { id: 'page-holds', label: 'Holds' },
+  { id: 'page-ledger', label: 'Ledger' },
 ];
 
 const field = (id: string) => ({ id });
@@ -37,11 +39,11 @@ const kpi = (id: string, aggregation: string, text: string) => ({ type: 'value',
 const FOLDED = { filters: { collapsed: true }, data: { collapsed: true }, edit: { collapsed: true } };
 
 const INITIAL: AgReportState = {
-  selectedPageId: 'needs',
+  selectedPageId: 'page-needs',
   panels: FOLDED,
   pages: [
     {
-      id: 'needs',
+      id: 'page-needs',
       name: 'Needs an answer',
       widgets: {
         queue: { type: 'needs-answer', dataMapping: Object.fromEntries(QUEUE_FIELDS.map((name) => [name, [field(`queue.${name}`)]])) },
@@ -58,7 +60,7 @@ const INITIAL: AgReportState = {
       },
     },
     {
-      id: 'queue',
+      id: 'page-pulls',
       name: 'Pull requests',
       widgets: {
         total: kpi('pulls.number', 'count', 'Pull requests from strangers'),
@@ -76,7 +78,7 @@ const INITIAL: AgReportState = {
       },
     },
     {
-      id: 'holds',
+      id: 'page-holds',
       name: 'Holds',
       widgets: {
         open: kpi('holds.open', 'sum', 'Holds in place now'),
@@ -96,7 +98,7 @@ const INITIAL: AgReportState = {
       },
     },
     {
-      id: 'ledger',
+      id: 'page-ledger',
       name: 'Ledger',
       widgets: {
         money: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('money.outcome')], valueKey: [{ id: 'money.amount', aggregation: 'sum' }] }, format: title('Money by outcome, USD') },
@@ -124,7 +126,7 @@ const THEME = studioTheme.withParams({
 export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: string }) {
   if (licenseKey) AgStudioLicenseManager.setLicenseKey(licenseKey);
   const studio = useRef<AgStudioApi | null>(null);
-  const [page, setPage] = useState('needs');
+  const [page, setPage] = useState('page-needs');
   // The console opens as a dashboard. Studio keeps its assistant in edit mode, so asking it
   // something switches to edit, where a layout change stays in this browser.
   const [mode, setMode] = useState<AgStudioMode>('view');
