@@ -81,10 +81,15 @@ export const holds = pgTable('holds', {
   payerId: text('payer_id'),
   authorizedAt: timestamp('authorized_at', { withTimezone: true }),
   reauthorized: boolean('reauthorized').notNull().default(false),
+  // The authorization a reauthorization replaced. PayPal's public spec does not say whether a
+  // reauthorization can be voided, so a release that is refused there tries this one.
+  parentAuthorizationId: text('parent_authorization_id'),
   appealEndsAt: timestamp('appeal_ends_at', { withTimezone: true }),
   captureId: text('capture_id'),
   // Set once the capture is complete at PayPal. A pending capture leaves it empty, so no payout starts.
   capturedAt: timestamp('captured_at', { withTimezone: true }),
+  // What PayPal left after its fee on the capture, which is what a payout can pass on.
+  netCents: integer('net_cents'),
   refundId: text('refund_id'),
   payoutBatchId: text('payout_batch_id'),
   forfeitedBy: text('forfeited_by'),

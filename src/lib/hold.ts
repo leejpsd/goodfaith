@@ -125,3 +125,8 @@ export function holdCents(
 export function toPayPalValue(cents: number): string {
   return (cents / 100).toFixed(2);
 }
+
+// PayPal writes USD amounts with two decimals. Anything else is left unread.
+export function fromPayPalValue(value: string | undefined): number | undefined {
+  return value && /^\d+\.\d{2}$/.test(value) ? Number(value.replace('.', '')) : undefined;
+}

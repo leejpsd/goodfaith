@@ -50,7 +50,11 @@ export const upheldComment = (by: string) => `@${by} upheld the forfeit, so the 
 export const capturedComment = (input: { login: string; cents: number; by: string | null }) =>
   `The ${money(input.cents)} hold from @${input.login} was captured${input.by ? `, following the forfeit by @${input.by}` : ''}. A maintainer can reverse this with \`!reverse <reason>\` for ${PAYOUT_AFTER_DAYS} day. After that it is paid out to the project, and a payout is final.`;
 
-export const paidOutComment = (cents: number) => `The captured ${money(cents)} was paid out to the project through PayPal.`;
+// PayPal keeps its fee on the capture, so the payout is the rest, and the comment says so.
+export const paidOutComment = (cents: number, captured = cents) =>
+  cents < captured
+    ? `Of the captured ${money(captured)}, ${money(cents)} was paid out to the project through PayPal, after PayPal's fee.`
+    : `The captured ${money(cents)} was paid out to the project through PayPal.`;
 
 export const payoutFailedComment = (cents: number) =>
   `PayPal could not pay out the captured ${money(cents)}, so it did not reach the project. It is still refundable: a maintainer can send it back with \`!reverse\`.`;

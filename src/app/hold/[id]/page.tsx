@@ -6,8 +6,9 @@ import { db } from '@/db/client';
 import { DEMO } from '@/lib/demo/constants';
 import { holds, projects, pullRequests } from '@/db/schema';
 import { AUTHORIZATION_DAYS, toPayPalValue, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
-import { holdAmount } from '@/server/hold-flow';
+import { holdAmount, isSizing } from '@/server/hold-flow';
 import { HoldButton } from './hold-button';
+import { RefreshSoon } from './refresh-soon';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Refundable hold' };
@@ -46,6 +47,15 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
               You do not have to pay anything. <a href={pr.htmlUrl}>Comment on the pull request</a> with what it fixes and why, and a maintainer can reply <code>!vouch</code>.
             </p>
           </section>
+          {isSizing(pr) ? (
+            <section className="card" aria-live="polite">
+              <h2>Or place a refundable hold, once the AI has sized it</h2>
+              <p className="muted">
+                An AI model is reading what this pull request changes, to pick an amount inside the {money(project.minCents)} to {money(project.maxCents)} a maintainer allows. It takes a few seconds, and this page updates on its own.
+              </p>
+              <RefreshSoon />
+            </section>
+          ) : (
           <section className="card">
             <h2>Or place a {money(cents)} refundable hold</h2>
             <p className="muted">
@@ -61,6 +71,7 @@ export default async function HoldPage({ params }: { params: Promise<{ id: strin
             </ul>
             <HoldButton pullRequestId={pr.id} clientId={process.env.PAYPAL_CLIENT_ID ?? ''} amount={toPayPalValue(cents)} canSimulateDecline={pr.authorLogin === DEMO.contributor} />
           </section>
+          )}
         </>
       ) : (
         <section className="card">

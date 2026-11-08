@@ -154,3 +154,6 @@ next-env.d.ts
 # Third-party pull request text. The published results link to it instead.
 evals/triage/data/
 evals/doors/data/
+
+# The hold lifecycle test keeps its run here, with sandbox order and authorization IDs.
+.hold-lifecycle*.json

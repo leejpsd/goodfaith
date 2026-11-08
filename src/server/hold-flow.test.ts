@@ -11,7 +11,7 @@ import { PayPalError, type Authorization, type PayPal } from '@/lib/paypal/clien
 import type { PayPalEvent } from '@/lib/paypal/webhook';
 import type { Deps, HoldDeps } from './deps';
 import { onIssueComment, onPullRequest, onPullRequestReview } from './gate-flow';
-import { beginHold, closeOldDemoPulls, confirmHold, onPayPalEvent, reconcile, releaseStrays, runDue } from './hold-flow';
+import { beginHold, closeOldDemoPulls, confirmHold, onPayPalEvent, reconcile, releaseStrays, runDue, SIZING_MS } from './hold-flow';
 
 const db = drizzle(new PGlite(), { schema });
 const DAY = 864e5;
@@ -67,6 +67,7 @@ class FakePayPal implements PayPal {
   declineAuthorize = false;
   captureError: PayPalError | null = null;
   captureStatus = 'COMPLETED';
+  captureNet: number | undefined = undefined;
   orders = 0;
   createOrder = async () => `ORDER-${++this.orders}`;
   simulated: boolean[] = [];
@@ -89,10 +90,13 @@ class FakePayPal implements PayPal {
     this.finds.push(orderId);
     return this.held.get(orderId) ?? null;
   };
+  // Authorizations PayPal will not void, to test the fallback to the one a reauthorization replaced.
+  voidRefused = new Set<string>();
   voidAuthorization = async (id: string, requestId: string) => {
     this.calls.push(`void ${id}`);
     this.requestIds.push(requestId);
     if (this.voidError) throw this.voidError;
+    if (this.voidRefused.has(id)) throw new PayPalError('void', 422, 'CANNOT_BE_VOIDED', 'debug');
   };
   reauthorizeError: PayPalError | null = null;
   reauthorize = async (id: string) => {
@@ -104,7 +108,7 @@ class FakePayPal implements PayPal {
     this.calls.push(`capture ${id}`);
     this.requestIds.push(requestId);
     if (this.captureError) throw this.captureError;
-    return { captureId: `CAP-${id}`, status: this.captureStatus };
+    return { captureId: `CAP-${id}`, status: this.captureStatus, netCents: this.captureNet };
   };
   refund = async (id: string) => {
     this.calls.push(`refund ${id}`);
@@ -180,9 +184,12 @@ const review = (login = 'maintainer', body: string | null = 'Looks fine', type =
   review: { body, user: { login, type } },
 });
 
+// Opened long enough ago that the hold is not waiting on the model's band.
 async function waitingPr() {
   await onPullRequest(deps, prEvent());
-  const [row] = await db.select().from(pullRequests).where(eq(pullRequests.htmlUrl, `https://github.com/owner/${repo}/pull/1`));
+  const url = `https://github.com/owner/${repo}/pull/1`;
+  await db.update(pullRequests).set({ createdAt: new Date(Date.now() - SIZING_MS) }).where(eq(pullRequests.htmlUrl, url));
+  const [row] = await db.select().from(pullRequests).where(eq(pullRequests.htmlUrl, url));
   return row!;
 }
 
@@ -199,6 +206,15 @@ const ledgerKinds = async (pullRequestId: string) =>
   (await db.select().from(ledgerEvents).where(eq(ledgerEvents.pullRequestId, pullRequestId)).orderBy(ledgerEvents.createdAt)).map((row) => row.kind);
 
 describe('placing a hold', () => {
+  it('makes no order while the model is still sizing a new pull request', async () => {
+    await onPullRequest(deps, prEvent());
+    const [fresh] = await db.select().from(pullRequests).where(eq(pullRequests.htmlUrl, `https://github.com/owner/${repo}/pull/1`));
+    expect(await beginHold(hold, fresh!.id)).toEqual({ refused: 'sizing' });
+    expect(paypal.orders).toBe(0);
+    await db.update(pullRequests).set({ triage: { band: 'low', reasons: ['Small fix.'], addresses_issue: 'no_linked_issue', reviewer_brief: 'Check it.', instructions_to_ai: null, model: 'test', at: '2026-11-08T00:00:00Z' } }).where(eq(pullRequests.id, fresh!.id));
+    expect(await beginHold(hold, fresh!.id)).toHaveProperty('orderId');
+  });
+
   it('takes the waiting label off', async () => {
     await placedHold();
     expect(github.labels).toEqual(['add waiting for vouch or hold', 'remove waiting for vouch or hold']);
@@ -511,7 +527,22 @@ describe('a forfeit', () => {
     await runDue(hold, new Date(row.appealEndsAt!.getTime() + 1000));
     const authorization = row.authorizationId!;
     expect(paypal.calls.slice(-2)).toEqual([`reauthorize ${authorization}`, `capture RE-${authorization}`]);
-    expect((await holdRow(pr.id)).authorizationId).toBe(`RE-${authorization}`);
+    expect(await holdRow(pr.id)).toMatchObject({ authorizationId: `RE-${authorization}`, parentAuthorizationId: authorization });
+  });
+
+  it('releases the authorization a reauthorization replaced when PayPal will not void the new one', async () => {
+    const pr = await placedHold();
+    await db.update(holds).set({ authorizedAt: new Date(Date.now() - 5 * DAY) }).where(eq(holds.pullRequestId, pr.id));
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    const row = await holdRow(pr.id);
+    const authorization = row.authorizationId!;
+    paypal.captureError = new PayPalError('capture', 422, 'AUTHORIZATION_EXPIRED', 'debug');
+    await runDue(hold, new Date(row.appealEndsAt!.getTime() + 1000));
+    paypal.captureError = null;
+    paypal.voidRefused.add(`RE-${authorization}`);
+    await onIssueComment(deps, say('!release'));
+    expect(paypal.calls.slice(-2)).toEqual([`void RE-${authorization}`, `void ${authorization}`]);
+    expect((await holdRow(pr.id)).state).toBe('voided');
   });
 });
 
@@ -673,6 +704,16 @@ describe('a payout', () => {
     expect(paid?.note).toBe('to the payout account in the project settings');
   });
 
+  it('pays out what PayPal left after its fee, and says so', async () => {
+    paypal.captureNet = 452;
+    const { pr, capturedAt } = await capturedHold();
+    await runDue(hold, new Date(capturedAt.getTime() + DAY + 1000));
+    expect(paypal.payouts[0]).toMatchObject({ cents: 452 });
+    const [paid] = await db.select().from(ledgerEvents).where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'paid_out')));
+    expect(paid?.cents).toBe(452);
+    expect(github.comments.at(-1)).toContain("after PayPal's fee");
+  });
+
   it('never pays out a capture reversed in the window', async () => {
     const { pr, capturedAt } = await capturedHold();
     await onIssueComment(deps, say('!reverse the appeal was right'));
@@ -716,7 +757,7 @@ describe('a payout', () => {
     const [row] = await db.select().from(ledgerEvents).where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'paid_out')));
     expect(row!.reconciledAt).not.toBeNull();
 
-    await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.UNCLAIMED', { payout_batch_id: batch }));
+    await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.RETURNED', { payout_batch_id: batch }));
     expect(github.comments.at(-1)).toContain('could not pay out');
   });
 });
@@ -885,7 +926,10 @@ describe('answers that are lost or come back unfinished', () => {
     await runDue(hold, new Date(capturedAt.getTime() + 2 * DAY));
     const paid = await holdRow(pr.id);
     expect(paid.state).toBe('paid_out');
+    // Unclaimed is not final: the receiver has 30 days, and PayPal sends RETURNED if it lapses.
     await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.UNCLAIMED', { id: 'ITEM-1', payout_batch_id: paid.payoutBatchId! }));
+    expect((await holdRow(pr.id)).state).toBe('paid_out');
+    await onPayPalEvent(hold, event('PAYMENT.PAYOUTS-ITEM.RETURNED', { id: 'ITEM-1', payout_batch_id: paid.payoutBatchId! }));
     expect(await holdRow(pr.id)).toMatchObject({ state: 'captured', capturedAt: null });
     expect(await ledgerKinds(pr.id)).toEqual(['held', 'forfeit_opened', 'captured', 'paid_out', 'payout_failed']);
     expect(github.comments.at(-1)).toContain('!reverse');

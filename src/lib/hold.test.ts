@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyConfirmed, decide, dueEffects, holdCents, toPayPalValue, voidDeadline, type Decision, type Hold } from './hold';
+import { applyConfirmed, decide, dueEffects, fromPayPalValue, holdCents, toPayPalValue, voidDeadline, type Decision, type Hold } from './hold';
 
 const DAY = 864e5;
 const start = new Date('2026-11-05T00:00:00Z');
@@ -166,5 +166,12 @@ describe('holdCents', () => {
 
   it('formats for PayPal', () => {
     expect(toPayPalValue(500)).toBe('5.00');
+  });
+
+  it('reads PayPal amounts, and nothing it cannot read exactly', () => {
+    expect(fromPayPalValue('23.78')).toBe(2378);
+    expect(fromPayPalValue('0.30')).toBe(30);
+    expect(fromPayPalValue('23.7')).toBeUndefined();
+    expect(fromPayPalValue(undefined)).toBeUndefined();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readConfirmation, readDispute, type PayPalEvent } from './webhook';
+import { readConfirmation, readDispute, readPayout, type PayPalEvent } from './webhook';
 
 const event = (event_type: string, resource: PayPalEvent['resource']): PayPalEvent => ({ id: 'WH-1', event_type, resource });
 
@@ -12,6 +12,11 @@ describe('readConfirmation', () => {
     expect(
       readConfirmation(event('PAYMENT.CAPTURE.COMPLETED', { id: 'C1', supplementary_data: { related_ids: { authorization_id: 'A1' } } })),
     ).toEqual({ confirmed: 'captured', captureId: 'C1', authorizationId: 'A1' });
+  });
+
+  it('reads what PayPal left after its fee', () => {
+    const resource = { id: 'C1', seller_receivable_breakdown: { gross_amount: { value: '25.00' }, paypal_fee: { value: '1.22' }, net_amount: { value: '23.78' } } };
+    expect(readConfirmation(event('PAYMENT.CAPTURE.COMPLETED', resource))).toMatchObject({ captureId: 'C1', netCents: 2378 });
   });
 
   it('falls back to the up link for the authorization', () => {
@@ -49,5 +54,13 @@ describe('readDispute', () => {
   it('ignores other events and a dispute with no capture', () => {
     expect(readDispute(event('CUSTOMER.DISPUTE.UPDATED', resource))).toBeNull();
     expect(readDispute(event('CUSTOMER.DISPUTE.CREATED', { dispute_id: 'D1' }))).toBeNull();
+  });
+});
+
+describe('readPayout', () => {
+  it('waits on an unclaimed payout, which PayPal returns after 30 days if nobody claims it', () => {
+    expect(readPayout(event('PAYMENT.PAYOUTS-ITEM.UNCLAIMED', { payout_batch_id: 'B1' }))).toBeNull();
+    expect(readPayout(event('PAYMENT.PAYOUTS-ITEM.RETURNED', { payout_batch_id: 'B1' }))).toEqual({ batchId: 'B1', outcome: 'failed' });
+    expect(readPayout(event('PAYMENT.PAYOUTS-ITEM.SUCCEEDED', { payout_batch_id: 'B1' }))).toEqual({ batchId: 'B1', outcome: 'succeeded' });
   });
 });

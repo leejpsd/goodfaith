@@ -85,13 +85,13 @@ async function closePullRequest(deps: HoldDeps, { pr, project }: Scope) {
   }
 }
 
-async function record(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, kind: LedgerKind, entry: { paypalId?: string | null; actor?: string | null; note?: string; reconciled?: boolean }) {
+async function record(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, kind: LedgerKind, entry: { paypalId?: string | null; actor?: string | null; note?: string; reconciled?: boolean; cents?: number }) {
   await deps.db.insert(ledgerEvents).values({
     projectId: project.id,
     pullRequestId: pr.id,
     holdId: row.id,
     kind,
-    cents: row.cents,
+    cents: entry.cents ?? row.cents,
     paypalId: entry.paypalId ?? null,
     actor: entry.actor ?? null,
     note: entry.note ?? null,
@@ -104,7 +104,13 @@ export function holdAmount({ pr, project }: Scope): number {
   return holdCents(pr.triage ? bandCents(pr.triage.band, project) : null, project);
 }
 
-export type Refusal = 'not_found' | 'not_waiting' | 'stale_order' | 'declined' | 'not_approved' | 'pending' | 'too_many_holds';
+// The model reads a new pull request after GitHub's delivery is answered, which takes seconds.
+// Until it has, or for this long if it never does, no order is made, so nobody can place a hold
+// at the default before the band lands. After that the default applies.
+export const SIZING_MS = 3 * 60_000;
+export const isSizing = (pr: Pick<Scope['pr'], 'triage' | 'createdAt'>, now = new Date()) => !pr.triage && now.getTime() - pr.createdAt.getTime() < SIZING_MS;
+
+export type Refusal = 'not_found' | 'not_waiting' | 'stale_order' | 'declined' | 'not_approved' | 'pending' | 'too_many_holds' | 'sizing';
 
 // GitHub's own cap works per repository, so someone spraying many projects passes under it. A
 // hold ties up real funds, and PayPal's account ID follows the same person across all of them.
@@ -114,6 +120,7 @@ export async function beginHold(deps: HoldDeps, pullRequestId: string): Promise<
   const scope = await scopeOf(deps, pullRequestId);
   if (!scope) return { refused: 'not_found' };
   if (scope.pr.door !== 'choose' || scope.pr.status !== 'waiting') return { refused: 'not_waiting' };
+  if (isSizing(scope.pr)) return { refused: 'sizing' };
 
   const cents = holdAmount(scope);
   // An earlier approval whose answer never arrived may have left money held. Release it first.
@@ -200,18 +207,30 @@ export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId
   return { ok: true };
 }
 
+// Releases the hold at PayPal. PayPal's public spec does not say whether a reauthorization can
+// be voided, so when it refuses one, the release tries the authorization it replaced.
+async function voidHold(deps: HoldDeps, row: Pick<HoldRow, 'id' | 'authorizationId' | 'parentAuthorizationId'>) {
+  const ids = [row.authorizationId, row.parentAuthorizationId].filter((id): id is string => Boolean(id));
+  for (const [index, id] of ids.entries()) {
+    try {
+      await deps.paypal.voidAuthorization(id, `hold-${row.id}-void-${id}`);
+      return;
+    } catch (error) {
+      // Already released, by a repeat or on PayPal's dashboard, which is the wanted result.
+      if (error instanceof PayPalError && error.issue === 'PREVIOUSLY_VOIDED') return;
+      if (!(error instanceof PayPalError) || error.retryable || index === ids.length - 1) throw error;
+      console.warn('Void refused, trying the authorization it replaced', row.id, error.message);
+    }
+  }
+}
+
 async function runEffects(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, effects: Effect[]) {
-  const result: { captureId?: string; capturedAt?: Date; refundId?: string; payoutBatchId?: string; reauthorized?: boolean } = {};
+  const result: { captureId?: string; capturedAt?: Date; netCents?: number; refundId?: string; payoutBatchId?: string; reauthorized?: boolean } = {};
   let authorizationId = row.authorizationId!;
   for (const effect of effects) {
     switch (effect) {
       case 'void':
-        try {
-          await deps.paypal.voidAuthorization(authorizationId, `hold-${row.id}-void-${authorizationId}`);
-        } catch (error) {
-          // Already released, by a repeat or on PayPal's dashboard, which is the wanted result.
-          if (!(error instanceof PayPalError) || error.issue !== 'PREVIOUSLY_VOIDED') throw error;
-        }
+        await voidHold(deps, row);
         break;
       case 'reauthorize':
         try {
@@ -224,13 +243,15 @@ async function runEffects(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, 
           result.reauthorized = false;
           break;
         }
-        // Saved at once, so a capture that fails next retries against the new authorization.
-        await deps.db.update(holds).set({ authorizationId, reauthorized: true, updatedAt: new Date() }).where(eq(holds.id, row.id));
+        // Saved at once, so a capture that fails next retries against the new authorization, and a
+        // release after that still knows the one it replaced.
+        await deps.db.update(holds).set({ authorizationId, parentAuthorizationId: row.authorizationId, reauthorized: true, updatedAt: new Date() }).where(eq(holds.id, row.id));
         break;
       case 'capture': {
         const capture = await deps.paypal.capture(authorizationId, row.cents, `hold-${row.id}-capture-${authorizationId}`);
         if (capture.status === 'DECLINED' || capture.status === 'FAILED') throw new PayPalError('capture', 422, capture.status, undefined);
         result.captureId = capture.captureId;
+        result.netCents = capture.netCents;
         // A pending capture can still be refused, so the payout waits until PayPal completes it.
         if (capture.status === 'COMPLETED') result.capturedAt = new Date();
         break;
@@ -239,9 +260,10 @@ async function runEffects(deps: HoldDeps, { pr, project }: Scope, row: HoldRow, 
         result.refundId = await deps.paypal.refund(row.captureId!, `hold-${row.id}-refund-${row.captureId}`);
         break;
       case 'payout':
+        // PayPal kept its fee on the capture, so the payout passes on what is left, not the hold.
         result.payoutBatchId = await deps.paypal.payout(
           {
-            cents: row.cents,
+            cents: row.netCents ?? row.cents,
             receiver: project.payoutReceiver!,
             note: `Forfeited hold on ${project.owner}/${project.repo} pull request #${pr.number}`,
             senderId: `hold-${row.id}`,
@@ -382,8 +404,8 @@ async function settleDue(deps: HoldDeps, scope: Scope, row: HoldRow, now: Date):
   if (!saved) return;
 
   if (payingOut) {
-    await record(deps, scope, saved, 'paid_out', { paypalId: saved.payoutBatchId, note: PAYOUT_NOTE });
-    await tell(deps, scope, { check: CHECK.paidOut, comment: paidOutComment(saved.cents) });
+    await record(deps, scope, saved, 'paid_out', { paypalId: saved.payoutBatchId, note: PAYOUT_NOTE, cents: saved.netCents ?? saved.cents });
+    await tell(deps, scope, { check: CHECK.paidOut, comment: paidOutComment(saved.netCents ?? saved.cents, saved.cents) });
   } else if (capturing) {
     await record(deps, scope, saved, 'captured', { paypalId: saved.captureId, actor: saved.forfeitedBy, note: saved.forfeitReason ?? undefined });
     await tell(deps, scope, { check: CHECK.captured, comment: capturedComment({ login: scope.pr.authorLogin, cents: saved.cents, by: saved.forfeitedBy }) });
@@ -569,7 +591,7 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
     // PayPal refused a capture it had reported as pending, so no money moved and the hold ends.
     if (found.hold.authorizationId) {
       try {
-        await deps.paypal.voidAuthorization(found.hold.authorizationId, `hold-${found.hold.id}-void-${found.hold.authorizationId}`);
+        await voidHold(deps, found.hold);
       } catch (error) {
         console.warn('Void after a refused capture failed', found.hold.id, error instanceof Error ? error.message : 'unknown error');
       }
@@ -590,6 +612,8 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
   if (!confirmation) return;
   const ids = [
     'authorizationId' in confirmation && confirmation.authorizationId ? eq(holds.authorizationId, confirmation.authorizationId) : undefined,
+    // PayPal may name the authorization a reauthorization replaced.
+    'authorizationId' in confirmation && confirmation.authorizationId ? eq(holds.parentAuthorizationId, confirmation.authorizationId) : undefined,
     'captureId' in confirmation ? eq(holds.captureId, confirmation.captureId) : undefined,
   ].filter((clause) => clause !== undefined);
   if (!ids.length) return;
@@ -614,7 +638,8 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
     // A capture that came back pending has now completed, so the payout window starts.
     const completed = confirmation.confirmed === 'captured' && found.hold.captureId === confirmation.captureId && !found.hold.capturedAt && !found.hold.payoutBatchId;
     if (completed) {
-      await deps.db.update(holds).set({ capturedAt: new Date(), updatedAt: new Date() }).where(and(eq(holds.id, found.hold.id), eq(holds.state, 'captured'), isNull(holds.capturedAt)));
+      const netCents = found.hold.netCents ?? confirmation.netCents;
+      await deps.db.update(holds).set({ capturedAt: new Date(), netCents, updatedAt: new Date() }).where(and(eq(holds.id, found.hold.id), eq(holds.state, 'captured'), isNull(holds.capturedAt)));
     }
     return;
   }
@@ -631,7 +656,7 @@ export async function onPayPalEvent(deps: HoldDeps, event: PayPalEvent): Promise
       state: next.state,
       appealEndsAt: null,
       updatedAt: new Date(),
-      ...(confirmation.confirmed === 'captured' ? { captureId: confirmation.captureId, capturedAt: new Date() } : {}),
+      ...(confirmation.confirmed === 'captured' ? { captureId: confirmation.captureId, capturedAt: new Date(), netCents: confirmation.netCents } : {}),
       ...(confirmation.confirmed === 'refunded' ? { refundId: confirmation.refundId } : {}),
     })
     .where(and(eq(holds.id, found.hold.id), eq(holds.state, found.hold.state)))

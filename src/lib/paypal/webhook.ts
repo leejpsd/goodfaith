@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fromPayPalValue } from '@/lib/hold';
 
 const link = z.object({ rel: z.string(), href: z.string() });
 
@@ -41,10 +42,12 @@ export function readDispute(event: PayPalEvent): { phase: 'opened' | 'resolved';
 
 export type Confirmation =
   | { confirmed: 'voided'; authorizationId: string }
-  | { confirmed: 'captured'; captureId: string; authorizationId?: string }
+  | { confirmed: 'captured'; captureId: string; authorizationId?: string; netCents?: number }
   | { confirmed: 'refunded'; refundId: string; captureId: string };
 
 // A refund's own `up` link is the only place the event names the capture it refunds.
+const breakdown = z.object({ seller_receivable_breakdown: z.object({ net_amount: z.object({ value: z.string() }) }) });
+
 const upTo = (event: PayPalEvent, kind: string) =>
   event.resource.links?.find((l) => l.rel === 'up' && l.href.includes(`/${kind}/`))?.href.split('/').pop();
 
@@ -59,6 +62,7 @@ export function readConfirmation(event: PayPalEvent): Confirmation | null {
         confirmed: 'captured',
         captureId: id,
         authorizationId: event.resource.supplementary_data?.related_ids?.authorization_id ?? upTo(event, 'authorizations'),
+        netCents: fromPayPalValue(breakdown.safeParse(event.resource).data?.seller_receivable_breakdown.net_amount.value),
       };
     case 'PAYMENT.CAPTURE.REFUNDED':
     case 'PAYMENT.CAPTURE.REVERSED': {
@@ -70,9 +74,11 @@ export function readConfirmation(event: PayPalEvent): Confirmation | null {
   }
 }
 
-const PAYOUT_FAILED = new Set(['FAILED', 'BLOCKED', 'DENIED', 'RETURNED', 'REFUNDED', 'REVERSED', 'UNCLAIMED', 'CANCELED']);
+// UNCLAIMED is left out on purpose: the receiver has 30 days to claim it, after which PayPal
+// returns the money and sends RETURNED, which is the failure to act on.
+const PAYOUT_FAILED = new Set(['FAILED', 'BLOCKED', 'DENIED', 'RETURNED', 'REFUNDED', 'REVERSED', 'CANCELED']);
 
-// Payouts report per item. Anything but success leaves the money outside the receiver's account.
+// Payouts report per item. A final status other than success leaves the money with this app.
 export function readPayout(event: PayPalEvent): { batchId: string; outcome: 'succeeded' | 'failed' } | null {
   const match = event.event_type.match(/^PAYMENT\.PAYOUTS-ITEM\.([A-Z]+)$/);
   const batchId = event.resource.payout_batch_id;

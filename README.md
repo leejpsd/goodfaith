@@ -68,7 +68,7 @@ A pull request that takes neither door gets the label `waiting for vouch or hold
 | Maintainer comments `!release` | Payments v2 void | Released in full |
 | Maintainer comments `!uphold`, or the appeal window closes with no appeal | Payments v2 reauthorize if past the honor period, then capture | Captured, and on the ledger. If PayPal refuses the reauthorization, the capture tries the original authorization |
 | Maintainer comments `!reverse <reason>` within a day of the capture | Payments v2 refund | Contributor repaid in full |
-| A day after the capture, unreversed | Payouts v1 | Paid to the project's receiver. A payout is final |
+| A day after the capture, unreversed | Payouts v1 | Paid to the project's receiver, net of PayPal's fee on the capture. A payout is final |
 | The contributor disputes the capture at PayPal | Dispute webhooks | The payout stops until PayPal decides, and the ledger records it |
 | Nobody acts for 28 days | Payments v2 void | Released, one day before PayPal would expire it |
 | Any of these, including a change made on PayPal's dashboard | Verified webhooks | Ledger confirmed or corrected |
@@ -76,7 +76,7 @@ A pull request that takes neither door gets the label `waiting for vouch or hold
 
 **No timer and no model can start a capture.** The clock only finishes a forfeit that a maintainer started, or releases a hold.
 
-PayPal honors an authorization in full for 3 days and keeps it valid for 29. So a hold can sit for up to 28 days at most, and a capture after day 3 reauthorizes first, because the original is no longer guaranteed.
+PayPal honors an authorization in full for 3 days and keeps it valid for 29. So a hold can sit for up to 28 days at most, and a capture after day 3 reauthorizes first, because the original is no longer guaranteed. We tested both paths on holds that had really aged 3.33 days: [the hold lifecycle run](docs/hold-lifecycle.md) has every check and sandbox ID.
 
 ## What the AI does
 
@@ -104,15 +104,18 @@ Band accuracy is measured on real public pull requests, under [rules fixed in ad
 | PayPal declines the payment method | Nothing is held, and the page asks for a different payment method. The demo can ask PayPal's sandbox to act this out |
 | The app cannot save an authorization PayPal just made | It voids the authorization, so no money stays reserved with no record |
 | PayPal's answer to an approval is lost on the way back | The page asks again with the same order and request ID, and never says nothing was held. An approval still unanswered after 15 minutes is checked at PayPal, and anything held on it is released and recorded |
-| A retried capture | Same `PayPal-Request-Id`, so the same capture comes back |
+| A retried capture | Same `PayPal-Request-Id`, so the same capture comes back. [Tested on the sandbox](docs/hold-lifecycle.md), with a second capture refused |
 | A capture or payout times out | Treated as unknown, not failed, and repeated with the same request ID on the next run |
 | PayPal refuses a capture | No money moves. The hold stays open until a release or the void deadline |
 | A capture comes back pending | No payout until PayPal reports it complete. If PayPal refuses it later, the hold is released and the ledger says so |
 | A payout fails or is returned | The ledger records it, and the capture stays refundable with `!reverse` |
+| A payout is unclaimed | Nothing yet: the receiver has 30 days, and only PayPal's later `RETURNED` counts as a failure |
+| PayPal will not void a reauthorized hold | The release tries the authorization it replaced |
 | PayPal has an outage during a capture | Retries with the same request ID |
 | A forged webhook | Rejected with a 401 after PayPal's signature check |
 | A webhook delivered twice | The second one does nothing |
 | GitHub is down after the money moved | The hold and ledger are still saved |
+| A stranger opens the hold page before the model has read the pull request | No order is made until the band lands, or for 3 minutes, so nobody pays the default to get under the band |
 | The model fails or returns bad output | The project's default amount applies |
 
 ## Commands

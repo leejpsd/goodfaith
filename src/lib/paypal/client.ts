@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { fromPayPalValue } from '@/lib/hold';
 import {
   ApiError,
   CheckoutPaymentIntent,
@@ -59,7 +60,8 @@ export interface PayPal {
   findAuthorization(orderId: string): Promise<Authorization | null>;
   voidAuthorization(authorizationId: string, requestId: string): Promise<void>;
   reauthorize(authorizationId: string, cents: number, requestId: string): Promise<string>;
-  capture(authorizationId: string, cents: number, requestId: string): Promise<{ captureId: string; status: string }>;
+  // netCents is what PayPal leaves after its fee, when the capture reports it.
+  capture(authorizationId: string, cents: number, requestId: string): Promise<{ captureId: string; status: string; netCents?: number }>;
   refund(captureId: string, requestId: string): Promise<string>;
   payout(input: { cents: number; receiver: string; note: string; senderId: string }, requestId: string): Promise<string>;
   searchTransactions(start: Date, end: Date): Promise<string[]>;
@@ -256,7 +258,7 @@ export function paypalClient(): PayPal {
         payments().captureAuthorizedPayment({ authorizationId, paypalRequestId: requestId, prefer: REPRESENTATION, body: { amount: usd(cents), finalCapture: true } }),
       );
       if (!capture.id) throw new PayPalError('capture', 200, 'NO_CAPTURE_ID', undefined);
-      return { captureId: capture.id, status: capture.status ?? 'COMPLETED' };
+      return { captureId: capture.id, status: capture.status ?? 'COMPLETED', netCents: fromPayPalValue(capture.sellerReceivableBreakdown?.netAmount?.value) };
     },
     async refund(captureId, requestId) {
       const refund = await viaSdk('refund', () => payments().refundCapturedPayment({ captureId, paypalRequestId: requestId, prefer: REPRESENTATION, body: {} }));
