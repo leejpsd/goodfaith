@@ -51,6 +51,8 @@ export interface HoldRow {
   pr: string;
   url: string;
   state: string;
+  // The AI band of the hold's pull request, so a chart of amounts by band needs no join.
+  band: string;
   // 1 while the hold is still reserved at PayPal, so a sum counts the open ones.
   open: number;
   amount: number;
@@ -122,13 +124,14 @@ export function holdDates(placedAt: Date) {
   };
 }
 
-export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: string, url = ''): HoldRow | null {
+export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: string, url = '', band = 'none'): HoldRow | null {
   if (!hold.authorizedAt) return null;
   const { honorEndsAt, releaseBy } = holdDates(hold.authorizedAt);
   return {
     pr,
     url,
     state: holdStateLabel(hold.state),
+    band: bandLabel(band),
     open: ['held', 'forfeit_pending', 'appealed'].includes(hold.state) ? 1 : 0,
     amount: hold.cents / 100,
     heldNow: ['held', 'forfeit_pending', 'appealed'].includes(hold.state) ? hold.cents / 100 : 0,

@@ -15,8 +15,8 @@ describe('toHoldRow', () => {
   });
 
   it('reports dollars and dates', () => {
-    const row = toHoldRow({ state: 'held', cents: 2500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null }, 'demo#7');
-    expect(row).toMatchObject({ pr: 'demo#7', amount: 25, state: 'In place', open: 1, appealEndsAt: null, placed: '2026-11-01 00:00 UTC', appealEnds: 'none', releaseBy: '2026-11-29 00:00 UTC' });
+    const row = toHoldRow({ state: 'held', cents: 2500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null }, 'demo#7', '', 'high');
+    expect(row).toMatchObject({ pr: 'demo#7', band: 'High', amount: 25, state: 'In place', open: 1, appealEndsAt: null, placed: '2026-11-01 00:00 UTC', appealEnds: 'none', releaseBy: '2026-11-29 00:00 UTC' });
   });
 });
 

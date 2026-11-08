@@ -42,7 +42,7 @@ async function load(): Promise<ConsoleData> {
       openedAt: pr.createdAt.toISOString().slice(0, 10),
     })),
     holds: rows.flatMap(({ pr, hold, repo }) => {
-      const row = hold && toHoldRow(hold, prRef(repo, pr.number), pr.htmlUrl);
+      const row = hold && toHoldRow(hold, prRef(repo, pr.number), pr.htmlUrl, pr.triage?.band);
       return row ? [row] : [];
     }),
     ledger: events.map(({ event, number, repo }) => ({
