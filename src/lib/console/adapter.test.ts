@@ -58,6 +58,12 @@ describe('fromOpenAi', () => {
     expect(events.map((event) => event.type)).toEqual(['TEXT_MESSAGE_START', 'TEXT_MESSAGE_CONTENT', 'TEXT_MESSAGE_END', 'TOOL_CALL_START', 'TOOL_CALL_ARGS', 'TOOL_CALL_END']);
   });
 
+  it('reports a failed response as failed, with nothing to show', () => {
+    const { response, events } = fromOpenAi({ status: 'failed', output: [] });
+    expect(response.status).toBe('failed');
+    expect(events).toEqual([]);
+  });
+
   it('reports an incomplete response', () => {
     expect(fromOpenAi({ status: 'incomplete', output: [] }).response.status).toBe('incomplete');
   });

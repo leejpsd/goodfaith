@@ -107,7 +107,7 @@ const INITIAL: AgReportState = {
       name: 'Ledger',
       widgets: {
         money: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('money.outcome')], valueKey: [{ id: 'money.amount', aggregation: 'sum' }] }, format: title('Money by outcome, USD') },
-        list: { type: 'grid', dataMapping: { cols: ['ledger.at', 'ledger.event', 'ledger.amount', 'ledger.pr', 'ledger.paypalId', 'ledger.reason'].map(field) } },
+        list: { type: 'grid', dataMapping: { cols: ['ledger.at', 'ledger.event', 'ledger.amount', 'ledger.pr', 'ledger.paypalId', 'ledger.confirmed', 'ledger.reason'].map(field) } },
       },
       widgetLayout: {
         money: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 18 },
@@ -124,7 +124,7 @@ const INITIAL: AgReportState = {
         ruleHigh: kpi('evidenceScores.ruleHighFirstTimers', 'sum', 'Good first-timers the rule charged most, of 419'),
         matrix: { type: 'miss-matrix', dataMapping: Object.fromEntries(MISS_FIELDS.map((name) => [name, [field(`evaluation.${name}`)]])) },
         labels: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('evidenceLabels.label')], valueKey: [{ id: 'evidenceLabels.share', aggregation: 'sum' }] }, format: title('Share of each label the model put in the high band, %') },
-        doors: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('closedDoors.band')], valueKey: [{ id: 'closedDoors.band', aggregation: 'count' }] }, format: title('304 newcomers closed by a bot: the band the model picked') },
+        doors: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('closedDoors.band')], valueKey: [{ id: 'closedDoors.band', aggregation: 'count' }] }, format: title('Newcomers closed by a bot: the band the model picked, 304 of 307 readable') },
         list: { type: 'grid', dataMapping: { cols: ['misses.repo', 'misses.group', 'misses.band', 'misses.reason', 'misses.url'].map(field) } },
       },
       widgetLayout: {
@@ -157,7 +157,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
   const studio = useRef<AgStudioApi | null>(null);
   const [page, setPage] = useState('page-needs');
   // The console opens as a dashboard. Studio keeps its assistant in edit mode, so asking it
-  // something switches to edit, where a layout change stays in this browser.
+  // something switches to edit, where a layout change lasts until the page reloads.
   const [mode, setMode] = useState<AgStudioMode>('view');
 
   // Studio opens the edit rails wide on the first switch, and the assistant is what the button
@@ -413,7 +413,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
         <button type="button" className="console-mode" aria-pressed={mode === 'edit'} onClick={() => setMode(mode === 'view' ? 'edit' : 'view')}>
           {mode === 'view' ? 'Ask the assistant' : 'Close the assistant'}
         </button>
-        <p className="muted">{mode === 'view' ? 'Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.' : 'The assistant is read-only too. Layout changes stay in this browser.'}</p>
+        <p className="muted">{mode === 'view' ? 'Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.' : 'The assistant is read-only too. Layout changes last until you reload.'}</p>
         <p className="console-narrow">The console is laid out for a wider screen. On a phone, the <a href="/ledger">public ledger</a> has the same rows.</p>
       </nav>
       <AgStudio onApiReady={({ api }) => { studio.current = api as unknown as AgStudioApi; }} style={{ height: 'calc(100% - 2.75rem)', width: '100%' }} data={sources} initialState={INITIAL} widgets={widgets} theme={THEME} mode={mode} ai={ai} />

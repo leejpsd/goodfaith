@@ -45,6 +45,7 @@ interface OpenAiOutput {
 }
 
 export function fromOpenAi(body: { id?: string; created_at?: number; status?: string; model?: string; output?: OpenAiOutput[]; usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } }): { response: AgLlmResponse; events: AgAiEvent[] } {
+  if (body.status === 'failed') return { response: failure('unavailable', 'The model did not answer.'), events: [] };
   const output: AgAiOutputItem[] = [];
   const events: AgAiEvent[] = [];
   for (const [index, item] of (body.output ?? []).entries()) {
