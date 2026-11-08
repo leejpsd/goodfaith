@@ -35,6 +35,17 @@ So the app's forfeit path stands as built: past day 3 it reauthorizes, and if Pa
 | 2026-11-08 13:04 UTC | reauthorize at 3.33 days | OK | new id 9M164574U13472607, expires 2026-12-04T05:12:53Z |
 | 2026-11-08 13:04 UTC | reauthorize: capture at 3.33 days | OK | 86N47700BB8823321 COMPLETED |
 
+## Changes made outside the app, on the live demo
+
+These happened on the demo project and are on the [public ledger](https://goodfaith.onrender.com/ledger), each confirmed by a signed PayPal webhook and answered by a comment on the pull request.
+
+| Pull request | What happened | Where | PayPal ID | What the app did |
+|---|---|---|---|---|
+| [goodfaith-demo#12](https://github.com/leejpsd/goodfaith-demo/pull/12) | A full refund, after the payout | The seller's PayPal dashboard | `72254226BN7565528` | Moved the hold to refunded, and recorded "changed outside this app" |
+| [goodfaith-demo#4](https://github.com/leejpsd/goodfaith-demo/pull/4) | A dispute, after the payout | The buyer's PayPal account | `PP-R-EQE-10197137` | Recorded the dispute, and that the payout had already gone out |
+
+PayPal kept its $1.36 fee when #12 was refunded in full, so a refund costs the operator the fee as well as the $25.00. A dispute that opens before the payout stops the payout. That path is covered by a unit test, not by this run.
+
 ## What it did not test
 
 Voiding a hold after it was reauthorized. PayPal's public spec does not say whether the new authorization or the one it replaced must be voided, so the app tries the new one and, if PayPal refuses, the one it replaced ([`hold-flow.ts`](../src/server/hold-flow.ts), `voidHold`). That fallback is covered by a unit test, not by a sandbox run.

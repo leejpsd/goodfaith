@@ -92,8 +92,10 @@ export function reviewerBriefComment(triage: Triage, cents: number): string {
   ].join('\n');
 }
 
-export const disputeOpenedComment = (cents: number) =>
-  `A PayPal dispute was opened on this ${money(cents)} capture, so the payout to the project is stopped until PayPal decides. If it was already paid out, that payout stands, and the operator bears the result.`;
+export const disputeOpenedComment = (cents: number, paidOut: boolean) =>
+  paidOut
+    ? `A PayPal dispute was opened on this ${money(cents)} capture. It was already paid out to the project and that payout stands, so the operator bears the result if PayPal sides with the contributor.`
+    : `A PayPal dispute was opened on this ${money(cents)} capture, so the payout to the project is stopped until PayPal decides.`;
 
 export const disputeResolvedComment = (outcome: string) => `PayPal resolved the dispute on this capture: ${outcome}.`;
 

@@ -519,7 +519,7 @@ async function onDisputeEvent(deps: HoldDeps, dispute: NonNullable<ReturnType<ty
     // No payout while PayPal decides. A hold already paid out stays paid, and the ledger says so.
     if (found.hold.state === 'captured') await deps.db.update(holds).set({ capturedAt: null, updatedAt: new Date() }).where(eq(holds.id, found.hold.id));
     await record(deps, scope, found.hold, 'disputed', { paypalId: dispute.disputeId, actor: 'PayPal', note: `the ${found.hold.state === 'paid_out' ? 'payout had already gone out' : 'payout is stopped'}`, reconciled: true });
-    await tell(deps, scope, { comment: disputeOpenedComment(found.hold.cents) });
+    await tell(deps, scope, { comment: disputeOpenedComment(found.hold.cents, found.hold.state === 'paid_out') });
     return;
   }
 

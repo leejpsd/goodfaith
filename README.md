@@ -109,6 +109,7 @@ Band accuracy is measured on real public pull requests, under [rules fixed in ad
 | PayPal refuses a capture | No money moves. The hold stays open until a release or the void deadline |
 | A capture comes back pending | No payout until PayPal reports it complete. If PayPal refuses it later, the hold is released and the ledger says so |
 | A payout fails or is returned | The ledger records it, and the capture stays refundable with `!reverse` |
+| A refund or dispute made at PayPal, not through the app | The webhook moves the hold or records the dispute, and the ledger and the pull request say so. [Both happened on the demo](docs/hold-lifecycle.md) |
 | A payout is unclaimed | Nothing yet: the receiver has 30 days, and only PayPal's later `RETURNED` counts as a failure |
 | PayPal will not void a reauthorized hold | The release tries the authorization it replaced |
 | PayPal has an outage during a capture | Retries with the same request ID |

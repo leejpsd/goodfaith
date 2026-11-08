@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { closedDoorComment, gateComment } from './messages';
+import { closedDoorComment, disputeOpenedComment, gateComment } from './messages';
 
 describe('gateComment', () => {
   const text = gateComment({ login: 'new-person', holdUrl: 'https://x/hold/1', minCents: 200, maxCents: 2500 });
@@ -34,5 +34,13 @@ describe('closedDoorComment', () => {
     const text = closedDoorComment('someone');
     expect(text).toContain('A hold cannot change that');
     expect(text).not.toContain('$');
+  });
+});
+
+describe('disputeOpenedComment', () => {
+  it('says the payout stopped only when it had not gone out', () => {
+    expect(disputeOpenedComment(2500, false)).toContain('is stopped');
+    expect(disputeOpenedComment(2500, true)).not.toContain('is stopped');
+    expect(disputeOpenedComment(2500, true)).toContain('operator bears the result');
   });
 });
