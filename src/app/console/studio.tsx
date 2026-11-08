@@ -34,9 +34,11 @@ const USD = { format: 'currencyFormat', formatOptions: { format: new Intl.Number
 const title = (text: string) => ({ title: { enabled: true, text, typography: { fontSize: 15 } } });
 const kpi = (id: string, aggregation: string, text: string) => ({ type: 'value', dataMapping: { value: [{ id, aggregation }] }, format: { style: { typography: { fontSize: 30 }, label: { enabled: true, text, position: 'below', typography: { fontSize: 13 } } } } });
 
+const FOLDED = { filters: { collapsed: true }, data: { collapsed: true }, edit: { collapsed: true } };
+
 const INITIAL: AgReportState = {
   selectedPageId: 'needs',
-  panels: { filters: { collapsed: true }, data: { collapsed: true }, edit: { collapsed: true } },
+  panels: FOLDED,
   pages: [
     {
       id: 'needs',
@@ -126,6 +128,14 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
   // The console opens as a dashboard. Studio keeps its assistant in edit mode, so asking it
   // something switches to edit, where a layout change stays in this browser.
   const [mode, setMode] = useState<AgStudioMode>('view');
+
+  // Studio opens the edit rails wide on the first switch, and the assistant is what this
+  // button is for, so the rails start folded and the dashboard keeps its width.
+  function toggleMode() {
+    const api = studio.current;
+    if (mode === 'view' && api) api.setState({ ...api.getState(), panels: { ...api.getState().panels, ...FOLDED } });
+    setMode(mode === 'view' ? 'edit' : 'view');
+  }
 
   function open(id: string) {
     const api = studio.current;
@@ -295,7 +305,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
         {PAGES.map(({ id, label }) => (
           <button key={id} type="button" aria-current={page === id ? 'page' : undefined} onClick={() => open(id)}>{label}</button>
         ))}
-        <button type="button" className="console-mode" aria-pressed={mode === 'edit'} onClick={() => setMode(mode === 'view' ? 'edit' : 'view')}>
+        <button type="button" className="console-mode" aria-pressed={mode === 'edit'} onClick={toggleMode}>
           {mode === 'view' ? 'Ask the assistant' : 'Close the assistant'}
         </button>
         <p className="muted">{mode === 'view' ? 'Everything here is public and read-only. Money only moves when a maintainer comments on the pull request.' : 'The assistant is read-only too. Layout changes stay in this browser.'}</p>

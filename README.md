@@ -185,7 +185,7 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ## The maintainer console, on AG Studio
 
-[The console](https://goodfaith.onrender.com/console) shows the queue, every hold and the ledger, on the app's own data.
+[The console](https://goodfaith.onrender.com/console) shows the queue, every hold and the ledger, on the app's own data. It opens as a read-only dashboard in Studio's view mode. **Ask the assistant** switches to edit mode, where Studio keeps its assistant, and any layout change stays in that browser.
 
 ![Every hold on one 28-day ruler, stamped with how it ended](docs/console-holds.png)
 
@@ -196,7 +196,7 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 How we used AG Studio, with the code for each:
 
 - **Two custom widgets**, registered through `createWidgets` with Studio's data mapping and a description its agents can read. *Needs an answer* ([`needs-answer.tsx`](src/app/console/needs-answer.tsx)) lists what a maintainer must act on, most urgent first, with a link, the deadline and the AI's brief. *Hold timeline* ([`hold-timeline.tsx`](src/app/console/hold-timeline.tsx)) puts each hold on a 28-day ruler with PayPal's honor period and the appeal window, and stamps how it ended.
-- **Four pages and a theme**, set as the initial report state and `studioTheme.withParams` in [`studio.tsx`](src/app/console/studio.tsx), in the site's paper, ink and stamp, with dollar formats on every amount.
+- **Four pages and a theme**, set as the initial report state and `studioTheme.withParams` in [`studio.tsx`](src/app/console/studio.tsx), in the site's paper, ink and stamp, with dollar formats on every amount. Five data sources are joined by relationships on `repository#number`, since each demo project numbers its own pull requests, so an agent can chart a hold's amount by the AI band of its pull request.
 - **A custom lead agent on the Studio Agent Framework**, `ledger-analyst`, built with `createAiHarness` and `directLlmRunner`. It has Studio's schema, page and query tools, one custom tool, `explain_hold_rules`, and `tools.delegateTo` to hand charts and pages to Studio's built-in page and widget agents.
 - **A custom `AgLlmAdapter`** ([`adapter.ts`](src/lib/console/adapter.ts)) sends every model call through the app's own route, with a fixed model and rate limits, so no key reaches the browser.
 - **No agent on the team has a tool that touches PayPal.** Ask it to capture a hold, and it says it cannot and names the maintainer's command.
