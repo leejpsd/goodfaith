@@ -35,6 +35,9 @@ const field = (id: string) => ({ id });
 // Studio's currency format has no symbol of its own, and every amount here is US dollars.
 const USD = { format: 'currencyFormat', formatOptions: { format: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) } } as const;
 
+// One decimal, so the tiles read as the published results do.
+const PERCENT = { format: 'percentageFormat', formatOptions: { format: new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }) } } as const;
+
 const title = (text: string) => ({ title: { enabled: true, text, typography: { fontSize: 15 } } });
 const kpi = (id: string, aggregation: string, text: string) => ({ type: 'value', dataMapping: { value: [{ id, aggregation }] }, format: { style: { typography: { fontSize: 30 }, label: { enabled: true, text, position: 'below', typography: { fontSize: 13 } } } } });
 
@@ -255,6 +258,7 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           description: "A past test of the model on 1,316 public pull requests from other projects, not this project's holds. A miss says nothing about the person who opened that pull request.",
           data: EVIDENCE_ROWS,
           fields: [
+            { id: 'id', name: 'Row', format: 'integerFormat' },
             { id: 'repo', name: 'Repository', format: 'textFormat' },
             { id: 'group', name: 'What really happened', format: 'textFormat' },
             { id: 'label', name: "Maintainers' label", format: 'textFormat' },
@@ -284,8 +288,8 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
           description: 'One row of headline results from the evaluation.',
           data: EVIDENCE_SCORES,
           fields: [
-            { id: 'model', name: 'Model, balanced accuracy', format: 'percentageFormat' },
-            { id: 'rule', name: 'Plain rule, balanced accuracy', format: 'percentageFormat' },
+            { id: 'model', name: 'Model, balanced accuracy', ...PERCENT },
+            { id: 'rule', name: 'Plain rule, balanced accuracy', ...PERCENT },
             { id: 'modelHighFirstTimers', name: 'Merged first-timers the model put in the high band', format: 'integerFormat' },
             { id: 'ruleHighFirstTimers', name: 'Merged first-timers the plain rule flagged', format: 'integerFormat' },
           ],

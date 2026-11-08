@@ -34,6 +34,7 @@ export function MissMatrix({ widgetApi, dataMapping }: MatrixParams) {
       const read = (row: Record<string, unknown>, name: (typeof MISS_FIELDS)[number]) => row[dataMapping[name]?.[0]?.key ?? name];
       setRows(
         (response.results?.rows ?? []).map((row) => ({
+          id: Number(read(row, 'id')),
           repo: String(read(row, 'repo') ?? ''),
           group: String(read(row, 'group') ?? ''),
           label: String(read(row, 'label') ?? ''),
@@ -104,7 +105,7 @@ export function MissMatrix({ widgetApi, dataMapping }: MatrixParams) {
       {reader === 'model' && (
         <ul className="matrix-misses" aria-label={`${picked.group} placed in the ${picked.column} band`}>
           {misses.map((miss) => (
-            <li key={miss.url}>
+            <li key={miss.id}>
               <a href={miss.url} target="_blank" rel="noreferrer">{miss.repo}</a> {miss.reason}
             </li>
           ))}

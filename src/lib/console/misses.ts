@@ -6,6 +6,8 @@ const BAND: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High
 const RULE: Record<string, string> = { high: 'High', not_high: 'Not high' };
 
 export interface EvidenceRow {
+  // Studio's flat query merges identical rows, and most rows here carry no link to tell them apart.
+  id: number;
   repo: string;
   group: string;
   label: string;
@@ -16,7 +18,8 @@ export interface EvidenceRow {
   reason: string;
 }
 
-export const EVIDENCE_ROWS: EvidenceRow[] = evidence.evaluation.map((r) => ({
+export const EVIDENCE_ROWS: EvidenceRow[] = evidence.evaluation.map((r, id) => ({
+  id,
   repo: r.repo,
   group: GROUP[r.set] ?? r.set,
   label: r.label,
@@ -30,9 +33,11 @@ export const EVIDENCE_ROWS: EvidenceRow[] = evidence.evaluation.map((r) => ({
 export const EVIDENCE_MISSES = EVIDENCE_ROWS.filter((r) => r.miss === 1);
 export const EVIDENCE_SCORES = [{ ...evidence.scores, model: evidence.scores.model / 100, rule: evidence.scores.rule / 100 }];
 export const EVIDENCE_LABELS = evidence.labels;
-export const CLOSED_DOORS = evidence.doors.map((r) => ({ band: BAND[r.band] ?? r.band, laterMerged: r.laterMerged }));
+// Lowest band first, which is the order the chart draws them in.
+const BAND_ORDER = ['Low', 'Medium', 'High'];
+export const CLOSED_DOORS = evidence.doors.map((r) => ({ band: BAND[r.band] ?? r.band, laterMerged: r.laterMerged })).sort((a, b) => BAND_ORDER.indexOf(a.band) - BAND_ORDER.indexOf(b.band));
 
-export const MISS_FIELDS = ['repo', 'group', 'label', 'band', 'rule', 'miss', 'url', 'reason'] as const;
+export const MISS_FIELDS = ['id', 'repo', 'group', 'label', 'band', 'rule', 'miss', 'url', 'reason'] as const;
 export type Reader = 'model' | 'rule';
 
 const GROUPS = ['Labelled low effort', 'Merged first-timer', 'Unclear'];

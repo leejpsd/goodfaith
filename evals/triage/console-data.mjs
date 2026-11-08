@@ -12,6 +12,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const model = process.argv[2] ?? 'gpt-6-luna';
 const clean = (text) => text.replace(/@[A-Za-z0-9-]+/g, '@[removed]').replace(/github\.com\/[A-Za-z0-9-]+(?=[\s/)]|$)/g, 'github.com/[removed]').replace(/\s+/g, ' ').trim();
 const round = (x) => Math.round(x * 1000) / 10;
+const shorten = (text, max = 260) => (text.length <= max ? text : `${text.slice(0, text.lastIndexOf(' ', max))}…`);
 
 const { rows } = loadResults('heldout', model);
 const { pair } = bestRule(loadResults('tuning', model).rows);
@@ -29,7 +30,7 @@ const evaluation = rows.map((r) => {
     rule: isRule(r) ? 'high' : 'not_high',
     miss: miss ? 1 : 0,
     url: miss ? r.url : '',
-    reason: miss ? clean(r.reasons.join(' ')).slice(0, 220) : '',
+    reason: miss ? shorten(clean(r.reasons.join(' '))) : '',
   };
 });
 

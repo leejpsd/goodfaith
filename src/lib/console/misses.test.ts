@@ -18,6 +18,10 @@ describe('the evidence page', () => {
     expect(marked).toEqual(['Labelled low effort: Low', 'Merged first-timer: High']);
   });
 
+  it('keeps every row distinct, since Studio merges identical ones', () => {
+    expect(new Set(EVIDENCE_ROWS.map((r) => r.id)).size).toBe(1316);
+  });
+
   it('links only the misses that are already published', () => {
     expect(EVIDENCE_MISSES).toHaveLength(220);
     expect(EVIDENCE_ROWS.filter((r) => r.url).length).toBe(220);
