@@ -15,9 +15,10 @@ interface HoldPoint {
   placedAt: string;
   appealEndsAt: string | null;
   capturedAt: string | null;
+  endedAt: string | null;
 }
 
-export const TIMELINE_FIELDS = ['pr', 'url', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt'] as const;
+export const TIMELINE_FIELDS = ['pr', 'url', 'state', 'amount', 'placedAt', 'appealEndsAt', 'capturedAt', 'endedAt'] as const;
 const ENDED = new Set(['Captured', 'Paid out', 'Released', 'Refunded']);
 // Money that went back to the contributor is stamped in green, and money taken in rust.
 const STAMP: Record<string, string> = { Released: 'returned', Refunded: 'returned', Captured: 'taken', 'Paid out': 'taken' };
@@ -61,6 +62,7 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
             placedAt: toIso(read(row, 'placedAt')) ?? '',
             appealEndsAt: toIso(read(row, 'appealEndsAt')),
             capturedAt: toIso(read(row, 'capturedAt')),
+            endedAt: toIso(read(row, 'endedAt')),
           })),
         );
       });
@@ -78,7 +80,7 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
       <div className="timeline-key">
         <span><i className="swatch honor" /> Honor period, {HONOR_DAYS} days</span>
         <span><i className="swatch appeal" /> Appeal window</span>
-        <span><i className="swatch age" /> Time held so far</span>
+        <span><i className="swatch age" /> Time held</span>
         <span><i className="swatch pin-key" /> Captured</span>
         <span>Released by day {LAST_DAY} if nobody acts</span>
       </div>
@@ -91,6 +93,8 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
           const age = dayOf(now, hold.placedAt);
           const ended = ENDED.has(hold.state);
           const appealEnd = hold.appealEndsAt ? dayOf(hold.appealEndsAt, hold.placedAt) : null;
+          // An ended hold is drawn to the day it ended, and its stamp sits just past that.
+          const held = hold.endedAt ? dayOf(hold.endedAt, hold.placedAt) : age;
           return (
             <li key={hold.pr} className={ended ? 'ended' : undefined}>
               <div className="timeline-label">
@@ -102,10 +106,10 @@ export function HoldTimeline({ widgetApi, dataMapping }: TimelineParams) {
                 aria-label={`${hold.pr}: ${hold.state}. Placed ${hold.placedAt}.${hold.appealEndsAt ? ` Appeal window ends ${hold.appealEndsAt}.` : ''}${hold.capturedAt ? ` Captured ${hold.capturedAt}.` : ''}`}
               >
                 <div className="segment honor" style={{ width: at(HONOR_DAYS) }} />
-                {!ended && <div className="segment age" style={{ width: at(age) }} />}
+                <div className="segment age" style={{ width: at(held) }} />
                 {!ended && appealEnd !== null && <div className="segment appeal" style={{ left: at(age), width: `calc(${at(appealEnd)} - ${at(age)})` }} />}
                 {hold.capturedAt && <div className="pin" style={{ left: at(dayOf(hold.capturedAt, hold.placedAt)) }} />}
-                {ended && <span className={`track-stamp ${STAMP[hold.state] ?? ''}`}>{hold.state}</span>}
+                {ended && <span className={`track-stamp ${STAMP[hold.state] ?? ''}`} style={{ left: `calc(${at(held)} + 0.5rem)` }}>{hold.state}</span>}
               </div>
             </li>
           );

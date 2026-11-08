@@ -63,6 +63,8 @@ export interface HoldRow {
   placedAt: string;
   appealEndsAt: string | null;
   capturedAt: string | null;
+  // When it stopped being reserved, so the timeline can draw how long it really was.
+  endedAt: string | null;
   // The same dates for reading in a table, in one format whatever the viewer's locale.
   placed: string;
   honorEnds: string;
@@ -124,7 +126,7 @@ export function holdDates(placedAt: Date) {
   };
 }
 
-export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null }, pr: string, url = '', band = 'none'): HoldRow | null {
+export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Date | null; appealEndsAt: Date | null; capturedAt: Date | null; updatedAt: Date }, pr: string, url = '', band = 'none'): HoldRow | null {
   if (!hold.authorizedAt) return null;
   const { honorEndsAt, releaseBy } = holdDates(hold.authorizedAt);
   return {
@@ -139,6 +141,7 @@ export function toHoldRow(hold: { state: string; cents: number; authorizedAt: Da
     placedAt: hold.authorizedAt.toISOString(),
     appealEndsAt: iso(hold.appealEndsAt),
     capturedAt: iso(hold.capturedAt),
+    endedAt: ['captured', 'paid_out', 'voided', 'refunded'].includes(hold.state) ? iso(hold.updatedAt) : null,
     placed: readable(hold.authorizedAt),
     honorEnds: readable(honorEndsAt),
     appealEnds: readable(hold.appealEndsAt),

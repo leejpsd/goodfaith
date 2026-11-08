@@ -11,11 +11,11 @@ describe('holdDates', () => {
 
 describe('toHoldRow', () => {
   it('skips a hold that was never approved', () => {
-    expect(toHoldRow({ state: 'awaiting_approval', cents: 500, authorizedAt: null, appealEndsAt: null, capturedAt: null }, 'demo#1')).toBeNull();
+    expect(toHoldRow({ state: 'awaiting_approval', cents: 500, authorizedAt: null, appealEndsAt: null, capturedAt: null, updatedAt: new Date('2026-11-01T00:00:00.000Z') }, 'demo#1')).toBeNull();
   });
 
   it('reports dollars and dates', () => {
-    const row = toHoldRow({ state: 'held', cents: 2500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null }, 'demo#7', '', 'high');
+    const row = toHoldRow({ state: 'held', cents: 2500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null, updatedAt: new Date('2026-11-01T00:00:00.000Z') }, 'demo#7', '', 'high');
     expect(row).toMatchObject({ pr: 'demo#7', band: 'High', amount: 25, state: 'In place', open: 1, appealEndsAt: null, placed: '2026-11-01 00:00 UTC', appealEnds: 'none', releaseBy: '2026-11-29 00:00 UTC' });
   });
 });
@@ -42,6 +42,19 @@ describe('moneyEventLabel', () => {
     expect(moneyEventLabel('forfeit_opened')).toBeNull();
     expect(moneyEventLabel('appealed')).toBeNull();
     expect(moneyEventLabel('vouched')).toBeNull();
+  });
+});
+
+describe('when a hold ended', () => {
+  const at = new Date('2026-11-04T00:00:00.000Z');
+  const row = (state: string) => toHoldRow({ state, cents: 500, authorizedAt: new Date('2026-11-01T00:00:00.000Z'), appealEndsAt: null, capturedAt: null, updatedAt: at }, 'demo#1');
+
+  it('is the last change once the hold is over', () => {
+    for (const state of ['captured', 'paid_out', 'voided', 'refunded']) expect(row(state)?.endedAt).toBe(at.toISOString());
+  });
+
+  it('is empty while the money is still reserved', () => {
+    for (const state of ['held', 'forfeit_pending', 'appealed']) expect(row(state)?.endedAt).toBeNull();
   });
 });
 
