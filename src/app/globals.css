@@ -776,7 +776,7 @@ paypal-button {
   outline-offset: -2px;
 }
 
-.matrix td.miss:has(button) {
+.matrix td:has(button) {
   padding: 0;
 }
 
@@ -797,6 +797,12 @@ paypal-button {
 
 .matrix td button[aria-pressed='true'] span {
   color: inherit;
+}
+
+.matrix-readers .matrix-clear {
+  margin-left: auto;
+  border-color: var(--stamp);
+  color: var(--stamp);
 }
 
 .matrix-note {

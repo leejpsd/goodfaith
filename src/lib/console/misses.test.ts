@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EVIDENCE_MISSES, EVIDENCE_ROWS, EVIDENCE_SCORES, tally } from './misses';
+import { EVIDENCE_ROWS, EVIDENCE_SCORES, tally } from './misses';
 
 const counts = (reader: 'model' | 'rule') => Object.fromEntries(tally(EVIDENCE_ROWS, reader).map((row) => [row.group, row.cells.map((c) => c.count)]));
 
@@ -23,7 +23,7 @@ describe('the evidence page', () => {
   });
 
   it('links only the misses that are already published', () => {
-    expect(EVIDENCE_MISSES).toHaveLength(220);
+    expect(EVIDENCE_ROWS.filter((r) => r.miss === 1)).toHaveLength(220);
     expect(EVIDENCE_ROWS.filter((r) => r.url).length).toBe(220);
     expect(JSON.stringify(EVIDENCE_ROWS)).not.toMatch(/"author"/);
   });

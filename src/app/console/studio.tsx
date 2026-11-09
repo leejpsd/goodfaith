@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { consoleAdapter } from '@/lib/console/adapter';
 import { LEAD_INSTRUCTIONS } from '@/lib/console/agents';
 import { HOLD_RULES, type ConsoleData } from '@/lib/console/data';
-import { CLOSED_DOORS, EVIDENCE_LABELS, EVIDENCE_MISSES, EVIDENCE_ROWS, EVIDENCE_SCORES, MISS_FIELDS } from '@/lib/console/misses';
+import { CLOSED_DOORS, EVIDENCE_LABELS, EVIDENCE_ROWS, EVIDENCE_SCORES, MISS_FIELDS } from '@/lib/console/misses';
 import { HoldTimeline, TIMELINE_FIELDS } from './hold-timeline';
 import { MissMatrix } from './miss-matrix';
 import { NeedsAnswer, QUEUE_FIELDS } from './needs-answer';
@@ -123,19 +123,19 @@ const INITIAL: AgReportState = {
         modelHigh: kpi('evidenceScores.modelHighFirstTimers', 'sum', 'Good first-timers the model charged most, of 419'),
         ruleHigh: kpi('evidenceScores.ruleHighFirstTimers', 'sum', 'Good first-timers the rule charged most, of 419'),
         matrix: { type: 'miss-matrix', dataMapping: Object.fromEntries(MISS_FIELDS.map((name) => [name, [field(`evaluation.${name}`)]])) },
-        labels: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('evidenceLabels.label')], valueKey: [{ id: 'evidenceLabels.share', aggregation: 'sum' }] }, format: title('Share of each label the model put in the high band, %') },
+        labels: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('evaluation.label')], valueKey: [{ id: 'evaluation.id', aggregation: 'count' }] }, format: title("Pull requests by maintainers' label") },
         doors: { type: 'column-chart-grouped', dataMapping: { categoryKey: [field('closedDoors.band')], valueKey: [{ id: 'closedDoors.band', aggregation: 'count' }] }, format: title('Newcomers closed by a bot, 304 of 307 sized') },
-        list: { type: 'grid', dataMapping: { cols: ['misses.repo', 'misses.group', 'misses.band', 'misses.reason', 'misses.url'].map(field) } },
+        list: { type: 'grid', dataMapping: { cols: ['evaluation.id', 'evaluation.repo', 'evaluation.group', 'evaluation.label', 'evaluation.band', 'evaluation.rule', 'evaluation.reason', 'evaluation.url'].map(field) } },
       },
       widgetLayout: {
         model: { xTrack: 0, yTrack: 0, xSpan: 6, ySpan: 6 },
         rule: { xTrack: 6, yTrack: 0, xSpan: 6, ySpan: 6 },
         modelHigh: { xTrack: 12, yTrack: 0, xSpan: 6, ySpan: 6 },
         ruleHigh: { xTrack: 18, yTrack: 0, xSpan: 6, ySpan: 6 },
-        matrix: { xTrack: 0, yTrack: 6, xSpan: 15, ySpan: 40 },
-        labels: { xTrack: 15, yTrack: 6, xSpan: 9, ySpan: 20 },
-        doors: { xTrack: 15, yTrack: 26, xSpan: 9, ySpan: 20 },
-        list: { xTrack: 0, yTrack: 46, xSpan: 24, ySpan: 28 },
+        matrix: { xTrack: 0, yTrack: 6, xSpan: 15, ySpan: 28 },
+        labels: { xTrack: 15, yTrack: 6, xSpan: 9, ySpan: 14 },
+        doors: { xTrack: 15, yTrack: 20, xSpan: 9, ySpan: 14 },
+        list: { xTrack: 0, yTrack: 34, xSpan: 24, ySpan: 28 },
       },
     },
   ],
@@ -268,19 +268,6 @@ export function Studio({ data, licenseKey }: { data: ConsoleData; licenseKey: st
             { id: 'miss', name: 'Is a published miss', format: 'integerFormat' },
             { id: 'url', name: 'Pull request link, misses only', format: 'textFormat' },
             { id: 'reason', name: "The model's reason, misses only", format: 'textFormat' },
-          ],
-        },
-        {
-          id: 'misses',
-          name: 'Evaluation misses',
-          description: 'The 220 published misses from the evaluation, with a link and the reason the model gave.',
-          data: EVIDENCE_MISSES,
-          fields: [
-            { id: 'repo', name: 'Repository', format: 'textFormat' },
-            { id: 'group', name: 'What really happened', format: 'textFormat' },
-            { id: 'band', name: 'Band the model picked in the test', format: 'textFormat' },
-            { id: 'reason', name: "The model's reason", format: 'textFormat' },
-            { id: 'url', name: 'Pull request link', format: 'textFormat' },
           ],
         },
         {

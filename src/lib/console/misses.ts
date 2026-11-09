@@ -22,7 +22,7 @@ export const EVIDENCE_ROWS: EvidenceRow[] = evidence.evaluation.map((r, id) => (
   id,
   repo: r.repo,
   group: GROUP[r.set] ?? r.set,
-  label: r.label,
+  label: r.label === 'none' ? 'No label' : r.label,
   band: BAND[r.band] ?? r.band,
   rule: RULE[r.rule] ?? r.rule,
   miss: r.miss,
@@ -30,7 +30,6 @@ export const EVIDENCE_ROWS: EvidenceRow[] = evidence.evaluation.map((r, id) => (
   reason: r.reason,
 }));
 
-export const EVIDENCE_MISSES = EVIDENCE_ROWS.filter((r) => r.miss === 1);
 export const EVIDENCE_SCORES = [{ ...evidence.scores, model: evidence.scores.model / 100, rule: evidence.scores.rule / 100 }];
 export const EVIDENCE_LABELS = evidence.labels;
 // Lowest band first, which is the order the chart draws them in.
