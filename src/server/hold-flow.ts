@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { holds, ledgerEvents, projects, pullRequests, type LedgerKind } from '@/db/schema';
 import type { Command } from '@/lib/commands';
 import type { CheckState } from '@/lib/github/client';
@@ -23,7 +23,7 @@ import {
   releasedComment,
   upheldComment,
 } from '@/lib/messages';
-import { DEMO, FIRST_TRY_NUMBER } from '@/lib/demo/constants';
+import { DEMO, FIRST_TRY_NUMBER, KEPT_WAITING_NUMBER } from '@/lib/demo/constants';
 import { PAYOUT_NOTE } from '@/lib/ledger-labels';
 import { PayPalError, type Authorization } from '@/lib/paypal/client';
 import { readConfirmation, readDispute, readPayout, readRefusedCapture, type PayPalEvent } from '@/lib/paypal/webhook';
@@ -499,7 +499,7 @@ export async function closeOldDemoPulls(deps: HoldDeps, now = new Date()): Promi
     .select({ pr: pullRequests, project: projects })
     .from(pullRequests)
     .innerJoin(projects, eq(pullRequests.projectId, projects.id))
-    .where(and(eq(projects.owner, DEMO.owner), eq(projects.repo, DEMO.repo), eq(pullRequests.authorLogin, DEMO.contributor), inArray(pullRequests.status, ['waiting', 'in_review']), gte(pullRequests.number, FIRST_TRY_NUMBER), lte(pullRequests.createdAt, new Date(now.getTime() - DEMO_LIFETIME_MS))));
+    .where(and(eq(projects.owner, DEMO.owner), eq(projects.repo, DEMO.repo), eq(pullRequests.authorLogin, DEMO.contributor), inArray(pullRequests.status, ['waiting', 'in_review']), gte(pullRequests.number, FIRST_TRY_NUMBER), ne(pullRequests.number, KEPT_WAITING_NUMBER), lte(pullRequests.createdAt, new Date(now.getTime() - DEMO_LIFETIME_MS))));
   for (const scope of rows) await closePullRequest(deps, scope);
 }
 

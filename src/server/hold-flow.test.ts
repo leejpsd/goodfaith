@@ -11,6 +11,7 @@ import { PayPalError, type Authorization, type PayPal } from '@/lib/paypal/clien
 import type { PayPalEvent } from '@/lib/paypal/webhook';
 import type { Deps, HoldDeps } from './deps';
 import { onIssueComment, onPullRequest, onPullRequestReview } from './gate-flow';
+import { KEPT_WAITING_NUMBER } from '@/lib/demo/constants';
 import { beginHold, closeOldDemoPulls, confirmHold, onPayPalEvent, reconcile, releaseStrays, runDue, SIZING_MS } from './hold-flow';
 
 const db = drizzle(new PGlite(), { schema });
@@ -832,6 +833,13 @@ describe('closing old demo pull requests', () => {
     github.closed = [];
     await closeOldDemoPulls(hold);
     expect(github.closed).toEqual([20]);
+  });
+
+  it('leaves the pull request kept waiting for judging', async () => {
+    await demoPull(KEPT_WAITING_NUMBER, 40 * DAY, 'waiting');
+    github.closed = [];
+    await closeOldDemoPulls(hold);
+    expect(github.closed).not.toContain(KEPT_WAITING_NUMBER);
   });
 });
 

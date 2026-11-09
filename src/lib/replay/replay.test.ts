@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { closedFast, outcomeOf, outsideAuthors, readRepo, stripHandles, summarize, toRow, type ListedPull, type ReplayRow } from './replay';
+import { closedFast, outcomeOf, outsideAuthors, readRepo, stripHandles, summarize, toRow, type ListedPull, type ReplayRow, resultIsCurrent } from './replay';
 
 const pull = (over: Partial<ListedPull> = {}): ListedPull => ({
   number: 1,
@@ -94,3 +94,18 @@ describe('closedFast', () => {
     expect(s).toMatchObject({ closedFast: 2, closedFastLow: 1, closedFastLaterMerged: 1 });
   });
 });
+
+describe('resultIsCurrent', () => {
+  const DAY = 864e5;
+
+  it('keeps a result for a week', () => {
+    expect(resultIsCurrent('scrapy/scrapy', 6 * DAY)).toBe(true);
+    expect(resultIsCurrent('scrapy/scrapy', 8 * DAY)).toBe(false);
+  });
+
+  it('never expires the replay the entry quotes', () => {
+    expect(resultIsCurrent('ghostty-org/ghostty', 60 * DAY)).toBe(true);
+    expect(resultIsCurrent('Ghostty-Org/Ghostty', 60 * DAY)).toBe(true);
+  });
+});
+

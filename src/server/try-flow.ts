@@ -2,7 +2,7 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { holds, ledgerEvents, projects, pullRequests, vouches } from '@/db/schema';
 import { ACTIONS, availableActions, type TryAction } from '@/lib/demo/actions';
-import { FIRST_TRY_NUMBER } from '@/lib/demo/constants';
+import { FIRST_TRY_NUMBER, KEPT_WAITING_NUMBER } from '@/lib/demo/constants';
 import { commentAs, DEMO, demoEnabled, openTestPullRequest, reviewAs, type PullRequestKind } from '@/lib/demo/github';
 
 // Each new pull request costs a model call, so the page has a daily ceiling.
@@ -25,7 +25,7 @@ export async function startTry(kind: PullRequestKind): Promise<{ number: number 
 }
 
 export async function tryState(number: number) {
-  if (number < FIRST_TRY_NUMBER) return null;
+  if (number < FIRST_TRY_NUMBER || number === KEPT_WAITING_NUMBER) return null;
   const [row] = await db()
     .select({ pr: pullRequests, hold: holds })
     .from(pullRequests)

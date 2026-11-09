@@ -2,13 +2,12 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { replays } from '@/db/schema';
 import { factsAtOpen, isPublicRepo, listRecentPulls, searchCounts } from '@/lib/replay/github';
-import { CLOSED_DOOR_MIN, closedFast, outsideAuthors, REPLAY_SIZE, toRow, type ListedPull, type ReplayResult, type ReplayRow } from '@/lib/replay/replay';
+import { CLOSED_DOOR_MIN, closedFast, outsideAuthors, REPLAY_SIZE, resultIsCurrent, toRow, type ListedPull, type ReplayResult, type ReplayRow } from '@/lib/replay/replay';
 import { runTriage, type Triage } from '@/lib/triage/triage';
 
 // Each new repository costs model calls and GitHub requests, so the page has a daily ceiling. A
-// result stays for a week, and looking at one again costs nothing.
+// result stays for a week, unless the entry quotes it, and looking at one again costs nothing.
 const DAILY_LIMIT = 40;
-const KEEP_MS = 7 * 864e5;
 const STUCK_MS = 10 * 60_000;
 const CONCURRENCY = 5;
 const CANDIDATES = 50;
@@ -18,7 +17,7 @@ export type ReplayStart = { status: 'running' | 'done' } | { refused: 'not_found
 export async function startReplay(repo: string): Promise<ReplayStart> {
   const [existing] = await db().select().from(replays).where(eq(replays.repo, repo));
   const age = existing ? Date.now() - existing.updatedAt.getTime() : Infinity;
-  if (existing?.status === 'done' && age < KEEP_MS && existing.result?.strangersFound !== undefined) return { status: 'done' };
+  if (existing?.status === 'done' && resultIsCurrent(repo, age) && existing.result?.strangersFound !== undefined) return { status: 'done' };
   if (existing?.status === 'running' && age < STUCK_MS) return { status: 'running' };
 
   const [today] = await db().select({ count: sql<number>`count(*)::int` }).from(replays).where(gte(replays.updatedAt, new Date(Date.now() - 864e5)));
