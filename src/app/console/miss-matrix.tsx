@@ -60,7 +60,7 @@ export function MissMatrix({ widgetApi, dataMapping }: MatrixParams) {
   const field = reader === 'model' ? dataMapping.band?.[0] : dataMapping.rule?.[0];
   const selection = widgetApi.getCrossFilterSelections()?.find((s) => s.type === 'multiValue');
   const pairs = ((selection?.values as { field: MappedField; value: string }[][] | undefined)?.[0] ?? []);
-  const valueOf = (mapped?: MappedField) => pairs.find((pair) => pair.field.id === mapped?.id)?.value;
+  const valueOf = (mapped?: MappedField) => pairs.find((pair) => pair.field.key === mapped?.key)?.value;
   const chosen = { group: valueOf(dataMapping.group?.[0]), column: valueOf(field) };
   const filtered = chosen.group !== undefined && chosen.column !== undefined;
   const reading = filtered ? chosen : { group: 'Merged first-timer', column: 'High' };
