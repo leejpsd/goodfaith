@@ -31,7 +31,7 @@ const DOORS = [
   { href: '/install', label: 'Install it on your own test repository', lookFor: 'the settings form, which writes the one file a maintainer controls, and the check that reads it back the way the gate will. Holds there use your PayPal sandbox account.' },
   { href: '/console', label: 'Open the maintainer console', lookFor: 'the refusal when you ask the assistant to capture a hold. It has no tool that can. Then ask it for a chart.' },
   { href: 'https://github.com/leejpsd/goodfaith/blob/master/docs/apimatic-context-plugin.md#how-it-was-checked', label: 'Check that a retry cannot charge twice', lookFor: 'the same capture sent twice with one request ID, which returned the same capture, 6SK33786XB396403W, and no second charge, through the app\u2019s own PayPal client on the sandbox.' },
-  { href: 'https://github.com/leejpsd/goodfaith/tree/master/evals/triage', label: 'Read the evaluation', lookFor: 'rules hashed and published before the run, a plain rule to beat, and every miss.' },
+  { href: 'https://github.com/leejpsd/goodfaith/tree/master/evals/triage', label: 'Read the evaluation', lookFor: 'rules hashed and published before the run, a plain rule to beat, a harder baseline the model does not clearly beat, and every miss at the two ends.' },
 ];
 
 export default async function JudgesPage() {

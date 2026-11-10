@@ -338,6 +338,19 @@ describe('later events', () => {
     expect(onlyCheck()).toMatchObject({ conclusion: 'success' });
   });
 
+  it('keeps a known contributor and a vouched author in review when reopened', async () => {
+    await onPullRequest(deps, prEvent({ author_association: 'CONTRIBUTOR' }));
+    await onPullRequest(deps, prEvent({ author_association: 'CONTRIBUTOR' }, 'closed'));
+    await onPullRequest(deps, prEvent({ author_association: 'CONTRIBUTOR' }, 'reopened'));
+    expect(await prRow()).toMatchObject({ status: 'in_review' });
+    await onPullRequest(deps, prEvent({ number: 2 }));
+    await onIssueComment(deps, commentEvent('!vouch', 'maintainer', { issue: { number: 2, pull_request: {} } }));
+    await onPullRequest(deps, prEvent({ number: 2 }, 'closed'));
+    await onPullRequest(deps, prEvent({ number: 2 }, 'reopened'));
+    expect(await prRow(2)).toMatchObject({ status: 'in_review' });
+    expect(onlyCheck()).toMatchObject({ conclusion: 'success' });
+  });
+
   it('records a merge and a close', async () => {
     await onPullRequest(deps, prEvent());
     await onPullRequest(deps, prEvent({ merged: true }, 'closed'));

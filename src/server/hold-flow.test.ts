@@ -415,6 +415,46 @@ describe('a good-faith review', () => {
   });
 });
 
+describe('a reopened pull request', () => {
+  const status = async (id: string) => (await db.select().from(pullRequests).where(eq(pullRequests.id, id)))[0]!.status;
+
+  it('goes back to the gate when closing released its hold', async () => {
+    const pr = await placedHold();
+    await onPullRequest(deps, prEvent('closed'));
+    expect((await holdRow(pr.id)).state).toBe('voided');
+    await onPullRequest(deps, prEvent('reopened'));
+    expect(await status(pr.id)).toBe('waiting');
+    expect(github.comments.at(-1)).toContain('released when it closed');
+    await onIssueComment(deps, say('!vouch'));
+    expect(await status(pr.id)).toBe('in_review');
+  });
+
+  it('keeps its place when a review had already released the hold', async () => {
+    const pr = await placedHold();
+    await onPullRequestReview(deps, review());
+    await onPullRequest(deps, prEvent('closed'));
+    await onPullRequest(deps, prEvent('reopened'));
+    expect(await status(pr.id)).toBe('in_review');
+  });
+
+  it('keeps a forfeit open, and the pull request in review, when a maintainer reopens it', async () => {
+    const pr = await placedHold();
+    await onIssueComment(deps, say('!forfeit copied spam'));
+    await onPullRequest(deps, prEvent('closed'));
+    await onPullRequest(deps, prEvent('reopened'));
+    expect(await status(pr.id)).toBe('in_review');
+    expect((await holdRow(pr.id)).state).toBe('forfeit_pending');
+  });
+
+  it('waits again, with the hold still on offer, when it never got in', async () => {
+    const pr = await waitingPr();
+    await onPullRequest(deps, prEvent('closed'));
+    await onPullRequest(deps, prEvent('reopened'));
+    expect(await status(pr.id)).toBe('waiting');
+    expect(github.comments.at(-1)).toContain(`/hold/${pr.id}`);
+  });
+});
+
 describe('a forfeit', () => {
   it('closes the pull request in the same comment', async () => {
     await placedHold();

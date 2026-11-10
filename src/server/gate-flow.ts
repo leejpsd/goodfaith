@@ -6,7 +6,7 @@ import { chooseDoor } from '@/lib/gate';
 import type { CheckState } from '@/lib/github/client';
 import { readSettings } from '@/lib/github/config';
 import type { IssueCommentEvent, PullRequestEvent, PullRequestReviewEvent } from '@/lib/github/webhook';
-import { CHECK, closedDoorComment, earnedComment, gateComment, invalidCommandComment, onlyMaintainersComment, unvouchedComment, vouchedComment, WAITING_LABEL } from '@/lib/messages';
+import { CHECK, closedDoorComment, earnedComment, gateComment, invalidCommandComment, onlyMaintainersComment, reopenedComment, unvouchedComment, vouchedComment, WAITING_LABEL } from '@/lib/messages';
 import { listStatus, parseVouchList } from '@/lib/vouch';
 import type { Deps, HoldDeps } from './deps';
 import { onHoldCommand, releaseForReview, releaseForVouch, type Scope } from './hold-flow';
@@ -50,6 +50,32 @@ function checkFor(pr: Scope['pr'], hold: StoredHoldState | undefined): CheckStat
   }
 }
 
+const CLOSED_WITHOUT_FORFEIT = 'this pull request was closed without a forfeit';
+const OPEN_HOLD: StoredHoldState[] = ['held', 'forfeit_pending', 'appealed'];
+
+// Closing releases a hold, so closing and reopening would otherwise walk past the gate with
+// nothing held. A reopened pull request keeps its place only if what let it in still stands: a
+// known author, a vouch, an open hold, or a hold that ended some other way than by the close.
+async function backToTheGate(deps: Deps, scope: Scope, headSha: string): Promise<void> {
+  const { pr, project } = scope;
+  const { owner, repo } = project;
+  const [hold] = await deps.db.select().from(holds).where(eq(holds.pullRequestId, pr.id));
+  const [vouch] = await deps.db.select().from(vouches).where(and(eq(vouches.projectId, project.id), eq(vouches.login, pr.authorLogin.toLowerCase())));
+  const [byClosing] = await deps.db
+    .select({ id: ledgerEvents.id })
+    .from(ledgerEvents)
+    .where(and(eq(ledgerEvents.pullRequestId, pr.id), eq(ledgerEvents.kind, 'voided'), eq(ledgerEvents.note, CLOSED_WITHOUT_FORFEIT)));
+  const heldItsPlace = Boolean(hold?.authorizedAt) && (OPEN_HOLD.includes(hold!.state) || !byClosing);
+  const status: PullRequestStatus = pr.door === 'closed' ? 'blocked' : pr.door === 'known' || vouch || heldItsPlace ? 'in_review' : 'waiting';
+
+  const checkRunId = await deps.github.createCheck(owner, repo, headSha, checkFor({ ...pr, status }, vouch ? undefined : hold?.state));
+  await deps.db.update(pullRequests).set({ status, headSha, checkRunId, updatedAt: new Date() }).where(eq(pullRequests.id, pr.id));
+  if (status !== 'waiting') return;
+  await deps.github.addLabel(owner, repo, pr.number, WAITING_LABEL).catch((error: unknown) => console.error('Adding the waiting label failed', error instanceof Error ? error.message : 'unknown error'));
+  // One hold per pull request. Where one was placed and released, the vouch is the door left.
+  await deps.github.comment(owner, repo, pr.number, reopenedComment({ login: pr.authorLogin, holdUrl: hold?.authorizedAt ? null : `${deps.appUrl}/hold/${pr.id}` }));
+}
+
 export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promise<void> {
   const owner = event.repository.owner.login;
   const repo = event.repository.name;
@@ -73,7 +99,7 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
       const status: PullRequestStatus = pr.merged ? 'merged' : 'closed';
       await deps.db.update(pullRequests).set({ status, updatedAt: new Date() }).where(eq(pullRequests.id, existing.id));
       // Closing without a forfeit releases the hold too. A forfeit already opened stays open.
-      const because = pr.merged ? 'this pull request was merged' : 'this pull request was closed without a forfeit';
+      const because = pr.merged ? 'this pull request was merged' : CLOSED_WITHOUT_FORFEIT;
       await releaseForReview(holdDeps(deps), { pr: existing, project }, null, because);
     }
     return;
@@ -84,6 +110,11 @@ export async function onPullRequest(deps: Deps, event: PullRequestEvent): Promis
     const [hold] = await deps.db.select({ state: holds.state }).from(holds).where(eq(holds.pullRequestId, existing.id));
     const checkRunId = await deps.github.createCheck(owner, repo, pr.head.sha, checkFor(existing, hold?.state));
     await deps.db.update(pullRequests).set({ headSha: pr.head.sha, checkRunId, updatedAt: new Date() }).where(eq(pullRequests.id, existing.id));
+    return;
+  }
+
+  if (event.action === 'reopened' && existing) {
+    await backToTheGate(deps, { pr: existing, project }, pr.head.sha);
     return;
   }
 

@@ -26,6 +26,11 @@ export const unvouchedComment = (login: string, by: string, found: boolean) =>
     ? `@${by} removed the vouch for @${login}. Their next pull request goes through the gate, and this one stays where it is.`
     : `@${by}, @${login} has no vouch here to remove.`;
 
+export const reopenedComment = (input: { login: string; holdUrl: string | null }) =>
+  input.holdUrl
+    ? `@${input.login}, this pull request was reopened, so it is back at the gate. A maintainer can reply \`!vouch\`, which is free, or you can place a refundable hold: ${input.holdUrl}`
+    : `@${input.login}, this pull request was reopened. Its hold was released when it closed, so it is back at the gate, and a maintainer can reply \`!vouch\` to let it into review.`;
+
 export const closedDoorComment = (login: string) =>
   `@${login} is on this project's denounced list, so this pull request will not enter review. A hold cannot change that. A maintainer can decide otherwise.`;
 
