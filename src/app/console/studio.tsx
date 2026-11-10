@@ -145,6 +145,8 @@ const INITIAL: AgReportState = {
 const THEME = studioTheme.withParams({
   backgroundColor: '#f3f8f4',
   foregroundColor: '#13304a',
+  // Tile labels and other quiet text. Studio's default is half-strength ink, too faint on this paper.
+  subtleTextColor: '#46596a',
   accentColor: '#5a2a8a',
   browserColorScheme: 'light',
   fontFamily: 'var(--font-text), system-ui, sans-serif',

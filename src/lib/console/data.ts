@@ -1,4 +1,4 @@
-import { AUTHORIZATION_DAYS, HONOR_DAYS, PAYOUT_AFTER_DAYS, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
+import { AUTHORIZATION_DAYS, HONOR_DAYS, PAYOUT_AFTER_DAYS, REAUTHORIZE_FROM_DAYS, VOID_BEFORE_EXPIRY_DAYS } from '@/lib/hold';
 
 const DAY = 864e5;
 
@@ -186,6 +186,6 @@ export const HOLD_RULES = [
   `A capture can be reversed with !reverse for one day. After that it is paid out to the project, and a payout is final.`,
   `A newcomer whose pull request went through Goodfaith at another project and was merged gets the free door, unless this project sets trust_earned_elsewhere to false.`,
   `A hold nobody acts on is released after ${AUTHORIZATION_DAYS - VOID_BEFORE_EXPIRY_DAYS} days. Timeouts never forfeit.`,
-  `PayPal's honor period is ${HONOR_DAYS} days. A capture after it reauthorizes first.`,
+  `PayPal's honor period is ${HONOR_DAYS} days. A capture from day ${REAUTHORIZE_FROM_DAYS} reauthorizes first.`,
   `The AI picks a band, and code maps it to the project's minimum, default or maximum amount. It has no way to forfeit, vouch, close or change a bound.`,
 ].join('\n');

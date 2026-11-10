@@ -10,7 +10,7 @@
 - **Reauthorizing inside the honor period is refused** with `REAUTHORIZATION_TOO_SOON`.
 - **At 3.33 days, after the honor period, both paths worked.** Capturing the original authorization completed. Reauthorizing returned a new authorization ID that kept the original 29-day expiry, and capturing that ID completed. Afterwards PayPal reported the original authorization as `CAPTURED` too.
 
-So the app's forfeit path stands as built: past day 3 it reauthorizes, and if PayPal refuses the reauthorization it captures the original.
+So PayPal accepts both halves of the app's forfeit path on an aged hold. The app reauthorizes from day 4. Before that, or if PayPal refuses the reauthorization, it captures the original. These runs come from the script: no forfeit in the live app has come that late yet.
 
 ## Every check, in order
 

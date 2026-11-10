@@ -5,7 +5,8 @@ const DAY = 864e5;
 
 export const HONOR_DAYS = 3;
 export const AUTHORIZATION_DAYS = 29;
-// Unverified until the late sandbox test runs. The guides suggest day 4.
+// PayPal's guides suggest day 4. Before it, the capture uses the original authorization, which
+// the sandbox completed at 3.33 days (docs/hold-lifecycle.md).
 export const REAUTHORIZE_FROM_DAYS = 4;
 // A hold is voided a full day before PayPal would expire it, so it never lapses unnoticed.
 export const VOID_BEFORE_EXPIRY_DAYS = 1;

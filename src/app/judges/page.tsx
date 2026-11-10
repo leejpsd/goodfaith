@@ -16,8 +16,9 @@ const CASES: Case[] = [
   { pulls: [demo(1)], title: 'A newcomer gets in free', lookFor: 'a maintainer\u2019s !vouch, the check turning green, and a $0.00 row. PayPal never appears.' },
   { pulls: [demo(3)], title: 'A careful stranger gets every cent back', lookFor: 'a $2.00 hold, then a review, then the same authorization released. Nothing was captured, and PayPal\u2019s signed webhook confirmed it.' },
   { pulls: [demo(2)], title: 'A maintainer takes a hold, then gives it back', lookFor: 'the reason in !forfeit, an appeal that stops the clock, a capture only after !uphold, and a refund. The description also tells AI reviewers to waive the deposit, and the brief flags it.' },
-  { pulls: [demo(4)], title: 'Nobody appeals', lookFor: 'a forfeit with a public reason. The capture waits out the appeal window. A day later the payout goes to a test account standing in for a foundation, not to the maintainer.' },
+  { pulls: [demo(4)], title: 'Nobody appeals', lookFor: 'a forfeit with a public reason. The capture waits out the appeal window. A day later the payout goes to a test account standing in for a foundation, not to the maintainer. The contributor then opened a dispute at PayPal, and the last row records it.' },
   { pulls: [demo(5)], title: 'A hold left waiting', lookFor: 'a hold nobody has acted on. Timeouts never forfeit, so after 28 days it is released in full.' },
+  { pulls: [demo(12)], title: 'PayPal moves the money back', lookFor: 'a test forfeit that was captured and paid out, then refunded from PayPal\u2019s dashboard with no command here. PayPal\u2019s signed webhook moved the hold to refunded, and the bot said so on the pull request.' },
   {
     pulls: [{ repo: 'goodfaith-demo-truncate', number: 1 }, { repo: 'goodfaith-demo-titlecase', number: 1 }],
     title: 'Trust travels to the next project',
@@ -48,7 +49,7 @@ export default async function JudgesPage() {
       <p className="lede">Nothing to install, no login and no API key. These cases already happened on the PayPal sandbox, and the rows below come live from the ledger.</p>
 
       <section className="band">
-        <h2>Six finished cases</h2>
+        <h2>Seven finished cases</h2>
         <div className="cases">
           {CASES.map((c) => {
             const events = rows.filter((r) => c.pulls.some((p) => p.repo === r.repo && p.number === r.pr.number));

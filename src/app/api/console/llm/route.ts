@@ -16,8 +16,9 @@ let used = 0;
 const visitors = new Map<string, { hour: number; used: number }>();
 
 // The route answers anyone, since the console needs no login, so one visitor cannot use it all.
+// The host's proxy sets cf-connecting-ip itself. A client can write the first forwarded-for value.
 function overVisitorLimit(request: Request): boolean {
-  const visitor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const visitor = request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const hour = Math.floor(Date.now() / 36e5);
   const entry = visitors.get(visitor);
   if (!entry || entry.hour !== hour) {

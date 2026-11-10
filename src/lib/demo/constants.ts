@@ -7,3 +7,7 @@ export const FIRST_TRY_NUMBER = 6;
 // Waits at the gate through judging, so the console's first page always has something on it.
 // It holds no money and has no deadline, and no visitor can act on it from the try page.
 export const KEPT_WAITING_NUMBER = 14;
+
+// Its capture becomes the first payout net of PayPal's fee, which the entry cites, so no visitor
+// can reverse it from the try page.
+export const KEPT_CAPTURED_NUMBER = 13;
