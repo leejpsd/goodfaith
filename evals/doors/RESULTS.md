@@ -4,7 +4,7 @@ Who closes a newcomer's pull request within an hour of opening, and what a refun
 
 ## What we looked at
 
-The 260 repositories with 1,000 or more stars from the [triage evaluation](../triage/RULES.md), and the latest 100 pull requests in each, so the window differs by project and mostly covers October and early November 2026. A newcomer is an author who is not an owner, member or collaborator and is not a bot, as GitHub reports it today. A pull request counts as closed fast when it was closed unmerged within an hour, and the closer is the account GitHub records as having closed it.
+The 260 repositories with 1,000 or more stars from the [triage evaluation](../triage/RULES.md), and the latest 100 pull requests in each, so the window differs by project. It ends in early November 2026, and starts before October 2026 at 179 of them. A newcomer is an author who is not an owner, member or collaborator and is not a bot, as GitHub reports it today. A pull request counts as closed fast when it was closed unmerged within an hour, and the closer is the account GitHub records as having closed it.
 
 ## Who closed them
 
