@@ -1,0 +1,15 @@
+{
+  "botClosed": 307,
+  "sized": 304,
+  "dropped": 3,
+  "low": 126,
+  "medium": 80,
+  "high": 98,
+  "laterMerged": 4,
+  "laterMergedByBand": {
+    "low": 2,
+    "medium": 0,
+    "high": 2
+  },
+  "flagged": 20
+}

@@ -70,4 +70,4 @@ The model and the bots disagree a lot, and that is the point of a second door. A
 
 ## Reproduce
 
-`node evals/doors/survey.mjs`, then `node --experimental-strip-types evals/doors/size.mjs`, then `node evals/doors/report.mjs`. GET requests only, and nothing is posted to any project. The sizing cost about $0.10.
+`node evals/doors/survey.mjs`, then `node --experimental-strip-types evals/doors/size.mjs`, then `node evals/doors/report.mjs`. GET requests only, and nothing is posted to any project. The survey's rows are in `data/`: project names, pull request numbers, times and counts, never a username or a pull request's text. The last command rebuilds this page from them alone. The sizing cost about $0.10.

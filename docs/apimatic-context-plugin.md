@@ -4,11 +4,11 @@ Goodfaith's PayPal client was first written against the REST API by hand. On 202
 
 | What the plugin told us | What we did | Where |
 |---|---|---|
-| The SDK has no timeout by default | 30 seconds on the client and on each HTTP call | [line 135](../src/lib/paypal/client.ts#L135) |
-| The SDK does not retry by default, and does not retry POST even when retries are on | Up to 3 attempts with backoff on 429 and 5xx, POST included. That is safe only because every money call carries a `PayPal-Request-Id`, so a repeat returns the first result | [line 147](../src/lib/paypal/client.ts#L147) |
-| Failures arrive as `ApiError` with the status, body and headers | One `PayPalError` with the status, PayPal's issue code and its `debug_id`, so the money rules never see SDK types | [line 159](../src/lib/paypal/client.ts#L159) |
-| Calls take a `prefer` header | `return=representation`, so an authorization returns its ID and the payer in one call | [line 175](../src/lib/paypal/client.ts#L175) |
-| Calls take a mock-response parameter | A real sandbox `INSTRUMENT_DECLINED` for the demo's decline, instead of a fake one in our code | [line 178](../src/lib/paypal/client.ts#L178) |
+| The SDK has no timeout by default | 30 seconds on the client and on each HTTP call | [line 165](../src/lib/paypal/client.ts#L165) |
+| The SDK does not retry by default, and does not retry POST even when retries are on | Up to 3 attempts with backoff on 429 and 5xx, POST included. That is safe only because every money call carries a `PayPal-Request-Id`, so a repeat returns the first result | [line 168](../src/lib/paypal/client.ts#L168) |
+| Failures arrive as `ApiError` with the status, body and headers | One `PayPalError` with the status, PayPal's issue code and its `debug_id`, so the money rules never see SDK types | [line 184](../src/lib/paypal/client.ts#L184) |
+| Calls take a `prefer` header | `return=representation`, so an authorization returns its ID and the payer in one call | [line 215](../src/lib/paypal/client.ts#L215) |
+| Calls take a mock-response parameter | A real sandbox `INSTRUMENT_DECLINED` for the demo's decline, instead of a fake one in our code | [line 239](../src/lib/paypal/client.ts#L239) |
 
 Payouts and webhook signature verification stay on REST, because the SDK has neither.
 

@@ -41,7 +41,7 @@ The ${doors.length} repositories with 1,000 or more stars from the [triage evalu
 | ... **by a bot** | **${bot}** |
 | ... closer not recorded | ${fast - bot - person - author} |
 
-Of the 307 authors closed by a bot, GitHub reports 282 with nothing merged in that project (`NONE`) and 25 as earlier contributors (`CONTRIBUTOR`), one of them with many merges there. So "newcomer" here means outside the project, not always a first-timer.
+Of the 307 authors closed by a bot, GitHub reports 282 with nothing merged in that project (\`NONE\`) and 25 as earlier contributors (\`CONTRIBUTOR\`), one of them with many merges there. So "newcomer" here means outside the project, not always a first-timer.
 
 Bots closed newcomers' pull requests at ${doors.filter((r) => r.byBot > 0).length} projects, and at ${doors.filter((r) => r.byBot >= 5).length} of them five or more times. Reading one bot message at each of those, the reasons were spam or slop detection (juice-shop, scrapy, RSSHub), a no-AI policy (yt-dlp), an application to contribute (postiz), process rules such as being assigned to the issue first (Nettacker, mastg, scikit-learn, uptime-kuma), and a submission checklist (flathub). Some of these are exactly right for those projects. One reply on such a pull request said a spam workflow had closed "a legitimate performance optimization".
 
@@ -72,6 +72,6 @@ ${projects.map(({ repo, rows }) => `| ${repo} | ${rows.length} | ${n(rows, 'low'
 
 ## Reproduce
 
-\`node evals/doors/survey.mjs\`, then \`node --experimental-strip-types evals/doors/size.mjs\`, then \`node evals/doors/report.mjs\`. GET requests only, and nothing is posted to any project. The sizing cost about $0.10.
+\`node evals/doors/survey.mjs\`, then \`node --experimental-strip-types evals/doors/size.mjs\`, then \`node evals/doors/report.mjs\`. GET requests only, and nothing is posted to any project. The survey's rows are in \`data/\`: project names, pull request numbers, times and counts, never a username or a pull request's text. The last command rebuilds this page from them alone. The sizing cost about $0.10.
 `);
 console.log('wrote RESULTS.md');

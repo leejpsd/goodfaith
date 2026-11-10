@@ -1,0 +1,103 @@
+{
+  "surveyed": 260,
+  "newcomerPullRequests": 14516,
+  "closedWithinAnHour": 1487,
+  "closedWithinAnHourByBot": 307,
+  "closedWithinAnHourByPerson": 514,
+  "closedWithinAnHourByAuthor": 662,
+  "reposWithBotClosing": 23,
+  "closedDoors": 13,
+  "closedDoorRepos": [
+    {
+      "repo": "juice-shop/juice-shop",
+      "byBot": 66,
+      "outside": 88,
+      "from": "2026-09-10",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "flathub/flathub",
+      "byBot": 55,
+      "outside": 100,
+      "from": "2026-10-30",
+      "to": "2026-11-06"
+    },
+    {
+      "repo": "OWASP/Nettacker",
+      "byBot": 40,
+      "outside": 70,
+      "from": "2026-08-19",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "scrapy/scrapy",
+      "byBot": 33,
+      "outside": 59,
+      "from": "2026-10-16",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "gitroomhq/postiz-app",
+      "byBot": 30,
+      "outside": 32,
+      "from": "2026-10-07",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "typescript-eslint/typescript-eslint",
+      "byBot": 13,
+      "outside": 46,
+      "from": "2026-10-12",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "louislam/uptime-kuma",
+      "byBot": 13,
+      "outside": 50,
+      "from": "2026-10-14",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "scikit-learn/scikit-learn",
+      "byBot": 12,
+      "outside": 81,
+      "from": "2026-10-22",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "DIYgod/RSSHub",
+      "byBot": 7,
+      "outside": 23,
+      "from": "2026-10-26",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "scrapy/parsel",
+      "byBot": 7,
+      "outside": 53,
+      "from": "2022-11-02",
+      "to": "2026-11-04"
+    },
+    {
+      "repo": "OWASP/mastg",
+      "byBot": 5,
+      "outside": 13,
+      "from": "2026-06-03",
+      "to": "2026-11-05"
+    },
+    {
+      "repo": "scrapinghub/dateparser",
+      "byBot": 5,
+      "outside": 22,
+      "from": "2026-09-28",
+      "to": "2026-11-04"
+    },
+    {
+      "repo": "yt-dlp/yt-dlp",
+      "byBot": 5,
+      "outside": 50,
+      "from": "2026-10-08",
+      "to": "2026-11-05"
+    }
+  ]
+}

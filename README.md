@@ -12,19 +12,21 @@ PayPal is the sandbox, and all money here is sandbox money. The AI model is Open
 
 ![The maintainer console: what needs an answer, with links, deadlines and the AI's brief](docs/console.png)
 
+The console is built on AG Studio: nine data sources, five pages, three custom widgets, and a custom lead agent that hands charts to Studio's own page and widget agents and has no tool that touches PayPal. On its Evidence page, choosing a cell of the results table filters the chart and the grid beside it. [How we used AG Studio](#the-maintainer-console-on-ag-studio) has the code for each.
+
 ## How it differs from other bonds
 
 Refundable bonds on pull requests are not new: some ask only AI agents, and some take a crypto deposit. What Goodfaith puts together is a free vouch first, any stranger, a PayPal account rather than a crypto wallet, a model that cannot take money, and trust that travels.
 
 ## The problem
 
-Maintainers surveyed by [Linux Foundation Research](https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop) in October 2026 estimated that a quarter of incoming pull requests are low-quality AI slop, and 31% on large projects. In public GitHub data we collected, repositories with 1,000 or more stars using a `slop` label on a stranger's pull request went from 2 in the second quarter of 2025 to 63 in the third quarter of 2026. Some of that is projects starting to use the label.
+Maintainers surveyed by [Linux Foundation Research](https://www.linuxfoundation.org/press/new-lf-research-survey-shows-generative-ai-cuts-open-source-coding-time-in-half-but-25-of-incoming-pull-requests-are-considered-ai-slop) in October 2026 estimated that a quarter of incoming pull requests are low-quality AI slop, and 31% on large projects. In public GitHub data we collected, repositories with 1,000 or more stars using a `slop` label on a stranger's pull request went from 8 in the third quarter of 2025 to 63 in the third quarter of 2026. Some of that is projects starting to use the label.
 
 So doors are closing. [Ladybird no longer accepts public pull requests](https://ladybird.org/posts/changing-how-we-develop-ladybird/), because effort was "a reasonable proxy for good faith" and no longer is. [tldraw closes outside pull requests automatically](https://tldraw.dev/blog/stay-away-from-my-trash). Ghostty closes them from anyone not on its [vouch list](https://github.com/mitchellh/vouch). [GitHub added a setting to turn pull requests off](https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/), and [warns](https://github.blog/open-source/maintainers/welcome-to-the-eternal-september-of-open-source-heres-what-we-plan-to-do-for-maintainers/) that such limits can fall hardest on "first-time contributors acting in good faith". [A 2026 preprint](https://arxiv.org/pdf/2607.04003) across 294 repositories found one-time contributors' merge rate running 18% below what its authors expected.
 
 **What a closed door looks like.** Ghostty's bot closes a pull request within a minute when nobody has vouched for its author. We [replayed Ghostty's last 300 pull requests](https://goodfaith.onrender.com/replay/ghostty-org/ghostty), read-only, on 2026-11-06: 20 from newcomers were closed within an hour. A hold would have given each of them a way past the bot without knowing anyone, and the model would have asked 13 of them for $5 or less and 7 for the $25 maximum. None of the 20 had a pull request merged there later, so this shows the door, not that the work was good.
 
-It is not one project. In a [read-only survey of 260 popular repositories](evals/doors/RESULTS.md), bots closed 307 newcomers' pull requests within an hour of opening, at 23 projects: spam and slop detectors, a no-AI policy, an application to contribute, and process rules. The model could read 304 of them, and would have sized 206 at $5 or less. It also misses tidy slop, so that is a reason for a maintainer to look, not proof the work was good.
+It is not one project. In a [read-only survey](evals/doors/RESULTS.md) of the 260 repositories with 1,000 or more stars where we had found a spam or slop label, bots closed 307 pull requests from outsiders within an hour of opening, at 23 projects, 282 of them from authors with nothing merged there. The closers were spam and slop detectors, a no-AI policy, an application to contribute, and process rules. The model could read 304 of them, and would have sized 206 at $5 or less. It also misses tidy slop, so that is a reason for a maintainer to look, not proof the work was good.
 
 **Goodfaith is for a project that has closed, or is about to.** Against an open door, a hold is a toll. Against a closed one, it is more access than a stranger has today.
 
@@ -47,7 +49,7 @@ The vouch comes first everywhere: in the bot's comment, on the hold page and in 
 
 **Why a project would turn on the hold.** A vouch costs a maintainer attention, which is the thing they have run out of. A hold costs them nothing until they choose to look, and it is the one signal a stranger can give without knowing anybody. A maintainer can review held pull requests first. We recommend sending forfeits to a charity or a foundation through `payout_receiver`, so a maintainer gains nothing by rejecting someone. Each held pull request arrives with a brief written by the AI, saying what the change does and what to check first, and the band says where to start: in the evaluation, the high band held 52% of the pull requests maintainers had labelled low effort but only 7% of the first-timers whose work was later merged (31 of 419, a reading added after the rules were fixed).
 
-**It reaches across projects.** GitHub says its own pull request cap ["does nothing when someone opens pull requests across hundreds of repositories at once"](https://github.blog/open-source/maintainers/how-pull-request-limits-are-cutting-down-the-noise/). A hold ties up real funds, and one PayPal account can have at most 5 open across every project using Goodfaith. In our data, 43% of labelled pull requests came from authors labelled more than once.
+**It reaches across projects.** GitHub says its own pull request cap ["does nothing when someone opens pull requests across hundreds of repositories at once"](https://github.blog/open-source/maintainers/how-pull-request-limits-are-cutting-down-the-noise/). A hold ties up real funds, and one PayPal account can have at most 5 open across every project using Goodfaith. In our data, 43% of labelled pull requests from outsiders came from authors labelled more than once. Most of that is inside one project: 6.4% came from authors labelled at more than one.
 
 **Trust travels.** Inside one project, a merged contributor is already known to GitHub. Goodfaith carries that merge to every other project that uses it, so a stranger's first pull request may cost a refundable $2, and their next one, anywhere, costs nothing. Only a merge earns it, since any review releases a hold, and a project can turn it off with `trust_earned_elsewhere`. The try repository turns it off, so every visitor meets the gate.
 
@@ -90,7 +92,7 @@ It has no tool to forfeit, vouch, refuse a door or change a bound. The size of a
 
 Band accuracy is measured on real public pull requests, under [rules fixed in advance](evals/triage/RULES.md). [Their SHA-256 went in a public gist](https://gist.github.com/leejpsd/b55b5aa7b3d4dccf9d0649bbc46010ba) before the first run, so the timestamp shows they came first.
 
-**The result, on 1,316 held-out pull requests.** The model's balanced accuracy was 72.2%, against 64.8% for the best plain rule, an account younger than 30 days or at most one earlier merge. The 95% interval for the difference is 4.2 to 10.4 points, so under the test fixed in advance the model beats the rule. It also misses a lot. It put 52% of maintainer-labelled low-effort pull requests in the high band, and it did worse on those labelled as AI slop (29% to 39%, by label) than on `spam` (62%): a tidy, plausible diff looks careful. In a reading we added after the rules, it put 31 of 419 merged first-timers in the high band, where the rule put 127. [Every miss is listed](evals/triage/RESULTS.md).
+**The result, on 1,316 held-out pull requests.** The model's balanced accuracy was 72.2%, measured on the 1,171 with a clear outcome (752 labelled low effort, 419 merged first-timers), against 64.8% for the best plain rule, an account younger than 30 days or at most one earlier merge. The 95% interval for the difference is 4.2 to 10.4 points, so under the test fixed in advance the model beats the rule. It also misses a lot. It put 52% of maintainer-labelled low-effort pull requests in the high band, and it did worse on those labelled as AI slop (29% to 39%, by label) than on `spam` (62%): a tidy, plausible diff looks careful. In a reading we added after the rules, it put 31 of 419 merged first-timers in the high band, where the rule put 127. [Every miss is listed](evals/triage/RESULTS.md), and `node evals/triage/recount.mjs` re-derives these numbers from this repository with no key.
 
 ## What it stops, and what it survives
 
@@ -193,7 +195,7 @@ Next.js on Render, with Postgres through Drizzle. A GitHub App receives pull req
 
 ![Every hold on one 28-day ruler, stamped with how it ended](docs/console-holds.png)
 
-![The Evidence page: what really happened on 1,316 public pull requests against the band the model picked, with each published miss and its reason](docs/console-evidence.png)
+![The Evidence page with one cell chosen, the 31 good first-timers the model charged most: the chart and the grid follow the cell, and each published miss is listed with its reason](docs/console-evidence.png)
 
 ![Asked to capture a hold, the assistant says it cannot: only a maintainer's public !forfeit can start one](docs/console-refusal.png)
 
@@ -225,6 +227,7 @@ How we used AG Studio, with the code for each:
 - **A good-faith contributor's money can stay reserved** until someone reviews, up to 28 days on a slow project, and that matters on a student's debit card.
 - **A maintainer could forfeit unfairly.** The appeal, the public reason and the ledger make that visible. They do not prevent it.
 - **The AI reads a pull request only when it opens.** Someone could open a careful diff, get the low band, then push something else. A maintainer's review is what ends a hold, so the most this buys is a smaller hold.
+- **Some PayPal events are handled only in their common form.** A partial refund made on PayPal's dashboard is recorded as a full one. A dispute that ends without a decision for the project, such as one the buyer cancels, leaves the capture unpaid until a person steps in. If the server restarts while it works on a webhook, PayPal's resend is taken for a duplicate and the event is lost. With no `payout_receiver` set, a forfeit is captured and not paid out, so it stays in the operator's PayPal account, still reversible.
 - **Paying forfeits out is legally unchecked.** Before going live, this needs advice on money transmission, or a design where each project is the merchant and Goodfaith never touches the money, which we have not tested.
 
 Similar ideas are compared [near the top](#how-it-differs-from-other-bonds).
