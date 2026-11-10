@@ -207,8 +207,8 @@ export async function confirmHold(deps: HoldDeps, pullRequestId: string, orderId
   return { ok: true };
 }
 
-// Releases the hold at PayPal. PayPal's public spec does not say whether a reauthorization can
-// be voided, so when it refuses one, the release tries the authorization it replaced.
+// Releases the hold at PayPal. PayPal refuses to void a reauthorization (CANNOT_BE_VOIDED) and
+// asks for the original instead, so when it refuses, the release tries the one it replaced.
 async function voidHold(deps: HoldDeps, row: Pick<HoldRow, 'id' | 'authorizationId' | 'parentAuthorizationId'>) {
   const ids = [row.authorizationId, row.parentAuthorizationId].filter((id): id is string => Boolean(id));
   for (const [index, id] of ids.entries()) {

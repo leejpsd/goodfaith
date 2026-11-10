@@ -48,7 +48,7 @@ PayPal kept its $1.36 fee when #12 was refunded in full, so a refund costs the o
 
 ## What it did not test
 
-Voiding a hold after it was reauthorized. PayPal's public spec does not say whether the new authorization or the one it replaced must be voided, so the app tries the new one and, if PayPal refuses, the one it replaced ([`hold-flow.ts`](../src/server/hold-flow.ts), `voidHold`). That fallback is covered by a unit test, not by a sandbox run.
+Voiding a hold after it was reauthorized. PayPal's Payments schema lists `CANNOT_BE_VOIDED`: a reauthorization cannot be voided, and the original authorization must be voided instead. The app tries the new one and, when PayPal refuses, the one it replaced ([`hold-flow.ts`](../src/server/hold-flow.ts), `voidHold`). That fallback is covered by a unit test, not by a sandbox run.
 
 ## Run it yourself
 
