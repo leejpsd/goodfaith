@@ -29,6 +29,7 @@ describe('HOLD_RULES', () => {
 describe('entryLabel', () => {
   it('says how the author got in', () => {
     expect(entryLabel({ door: 'known', status: 'in_review', held: false })).toBe('Known contributor');
+    expect(entryLabel({ door: 'known', status: 'in_review', held: false, earned: true })).toBe('Trust earned elsewhere');
     expect(entryLabel({ door: 'closed', status: 'blocked', held: false })).toBe('Denounced');
     expect(entryLabel({ door: 'choose', status: 'in_review', held: true })).toBe('Refundable hold');
     expect(entryLabel({ door: 'choose', status: 'in_review', held: false })).toBe('Free vouch');

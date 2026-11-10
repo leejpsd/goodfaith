@@ -24,6 +24,8 @@ async function load(): Promise<ConsoleData> {
     .innerJoin(projects, eq(pullRequests.projectId, projects.id))
     .orderBy(desc(ledgerEvents.createdAt))
     .limit(2000);
+  // The free door opened by a merge at another project is on the ledger as a $0 vouch.
+  const earned = new Set(events.filter(({ event }) => event.kind === 'vouched' && event.note?.startsWith('earned:')).map(({ event }) => event.pullRequestId));
   return {
     queue: rows
       .flatMap(({ pr, hold, repo }) => {
@@ -37,7 +39,7 @@ async function load(): Promise<ConsoleData> {
       title: pr.title,
       url: pr.htmlUrl,
       status: statusLabel(pr.status),
-      entry: entryLabel({ door: pr.door, status: pr.status, held: Boolean(hold?.authorizedAt) }),
+      entry: entryLabel({ door: pr.door, status: pr.status, held: Boolean(hold?.authorizedAt), earned: earned.has(pr.id) }),
       band: bandLabel(pr.triage?.band ?? 'none'),
       openedAt: pr.createdAt.toISOString().slice(0, 10),
     })),

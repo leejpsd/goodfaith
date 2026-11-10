@@ -23,8 +23,8 @@ const BAND: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High
 export const statusLabel = (status: string) => STATUS[status] ?? status;
 export const bandLabel = (band: string) => BAND[band] ?? band;
 
-export function entryLabel(input: { door: string; status: string; held: boolean }): string {
-  if (input.door === 'known') return 'Known contributor';
+export function entryLabel(input: { door: string; status: string; held: boolean; earned?: boolean }): string {
+  if (input.door === 'known') return input.earned ? 'Trust earned elsewhere' : 'Known contributor';
   if (input.door === 'closed') return 'Denounced';
   if (input.held) return 'Refundable hold';
   return input.status === 'waiting' ? 'Not yet' : 'Free vouch';
