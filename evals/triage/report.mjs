@@ -20,6 +20,9 @@ const isRule = ruleFor(best.pair);
 const [from, to] = bootstrapDifference(rows, isRule);
 const meta = metadataBaseline(MODEL);
 const points = (x) => (x * 100).toFixed(1);
+const first = meta.readFirst;
+const byChance = (n) => Math.round((n * first.size) / first.of);
+const readFirst = `The low band holds ${first.size} of the ${first.of} held-out pull requests. In it are ${first.model.control} of the ${meta.control} first-timers whose work was later merged and ${first.model.low} of the ${meta.low} labelled low effort. The same number taken in arrival order would hold about ${byChance(meta.control)} and ${byChance(meta.low)}, and the same number from the bottom of the metadata baseline's order holds ${first.baseline.control} and ${first.baseline.low}. This set was built from labelled and merged pull requests, so a real queue has a different mix, and nobody timed a review.`;
 const harder = `A logistic regression on nine facts that need no reading of the text (account age, earlier merges, title and description length, lines and files changed, a linked issue, the share of documentation files, a test file touched), fitted on the ${meta.trainedOn} tuning pull requests ([\`baseline.mjs\`](baseline.mjs)), scored ${points(meta.baseline)}% against the model's ${points(meta.model)}%. The 95% interval for the difference is ${points(meta.interval[0])} to ${points(meta.interval[1])} points, which includes zero. That is with its threshold chosen on the tuning set, as the plain rule's pair was. Our first run used a 0.5 threshold and scored ${points(meta.baselineAtHalf)}%. The two differ at the strict end: this baseline put ${meta.baselineHighControl} of ${meta.control} merged first-timers in its high group, where the model put ${meta.modelHighControl}, and held to the model's ${meta.modelHighControl} it caught ${meta.baselineCaughtAtModelRate} of ${meta.low} low-effort pull requests, where the model caught ${meta.modelCaught}. No metadata writes the reviewer's brief or quotes text aimed at AI reviewers.`;
 
 const pct = (n, d) => `${((n / d) * 100).toFixed(1)}%`;
@@ -110,6 +113,7 @@ These readings were not in RULES.md, so treat them as exploration, not as tested
 
 - **Who the rule would overcharge.** The plain rule put ${control.filter(isRule).length} of ${control.length} merged first-timers in the high band, and the model ${count(control, 'high')}. Most first-timers have young accounts or few merges, so a rule built on those charges them the most.
 - **A harder baseline, and the model does not clearly beat it.** ${harder}
+- **What reading the low band first gives a maintainer.** ${readFirst}
 - **What a hold would be,** at the demo repository's $2, $5 and $25: ${money(low)} on average for low-effort pull requests, and ${money(control)} for merged first-timers.
 - **By label:** ${Object.entries(labels).map(([k, v]) => `\`${k}\` ${v.high} of ${v.n} high`).join(', ')}.
 - **Text aimed at AI reviewers,** flagged with no injection added: ${flaggedBySet}. We have not checked these by hand.

@@ -76,7 +76,18 @@ export function metadataBaseline(model) {
   const modelFlags = control.filter(isModel).length;
   const cut = control.map((r) => scores.get(r.url)).sort((a, b) => b - a)[modelFlags - 1];
   const atModelRate = (r) => scores.get(r.url) >= cut;
+  // What a maintainer meets by reading the model's low band first, against the same number of
+  // pull requests taken from the bottom of this baseline's order.
+  const count = (rows, set) => rows.filter((r) => r.set === set).length;
+  const lowBand = heldout.filter((r) => r.band === 'low');
+  const baselineFirst = [...heldout].sort((a, b) => scores.get(a.url) - scores.get(b.url)).slice(0, lowBand.length);
   return {
+    readFirst: {
+      size: lowBand.length,
+      of: heldout.length,
+      model: { control: count(lowBand, 'control'), low: count(lowBand, 'low_effort') },
+      baseline: { control: count(baselineFirst, 'control'), low: count(baselineFirst, 'low_effort') },
+    },
     trainedOn: tuning.length,
     baseline: balanced(heldout, isBaseline),
     baselineAtHalf: balanced(heldout, atHalf),
