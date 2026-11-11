@@ -44,7 +44,7 @@ These happened on the demo project and are on the [public ledger](https://goodfa
 | [goodfaith-demo#12](https://github.com/leejpsd/goodfaith-demo/pull/12) | A full refund, after the payout | The seller's PayPal dashboard | `72254226BN7565528` | Moved the hold to refunded, and recorded "changed outside this app" |
 | [goodfaith-demo#4](https://github.com/leejpsd/goodfaith-demo/pull/4) | A dispute, after the payout | The buyer's PayPal account | `PP-R-EQE-10197137` | Recorded the dispute, and that the payout had already gone out |
 
-PayPal kept its $1.36 fee when #12 was refunded in full, so a refund costs the operator the fee as well as the $25.00. A dispute that opens before the payout stops the payout. That path is covered by a unit test, not by this run.
+PayPal kept its $1.36 fee when #12 was refunded in full, so a refund costs the operator the fee as well as the $25.00. PayPal also reports a $0.25 fee on each payout batch, charged to the sending account, and the payout does not take it out: #13 captured $25.00, kept $23.64 after PayPal's $1.36, and paid out $23.64, which left the operator $0.25 down. A dispute that opens before the payout stops the payout. That path is covered by a unit test, not by this run.
 
 ## What it did not test
 
