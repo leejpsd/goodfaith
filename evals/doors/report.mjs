@@ -20,6 +20,11 @@ const pct = (a, b) => `${Math.round((a / b) * 100)}%`;
 const projects = [...new Set(banded.map((r) => r.repo))]
   .map((repo) => ({ repo, rows: banded.filter((r) => r.repo === repo) }))
   .sort((a, b) => b.rows.length - a.rows.length);
+// Which kind of bot closed them, from reading one bot message at each project (listed below).
+const DETECTORS = ['juice-shop/juice-shop', 'scrapy/scrapy', 'DIYgod/RSSHub'];
+const PROCESS = ['yt-dlp/yt-dlp', 'gitroomhq/postiz-app', 'OWASP/Nettacker', 'OWASP/mastg', 'scikit-learn/scikit-learn', 'louislam/uptime-kuma', 'flathub/flathub'];
+const small = banded.filter((r) => r.band === 'low' || r.band === 'medium');
+const at = (repos) => small.filter((r) => repos.includes(r.repo)).length;
 const windows = doors.filter((r) => r.from).map((r) => r.from.slice(0, 10)).sort();
 
 writeFileSync(join(here, 'RESULTS.md'), `# Closed doors
@@ -41,7 +46,7 @@ The ${doors.length} repositories with 1,000 or more stars from the [triage evalu
 | ... **by a bot** | **${bot}** |
 | ... closer not recorded | ${fast - bot - person - author} |
 
-Of the 307 authors closed by a bot, GitHub reports 282 with nothing merged in that project (\`NONE\`) and 25 as earlier contributors (\`CONTRIBUTOR\`), one of them with many merges there. So "newcomer" here means outside the project, not always a first-timer.
+Of the 307 pull requests closed by a bot, GitHub marks the author of 282 as having nothing merged in that project (\`NONE\`) and of 25 as an earlier contributor (\`CONTRIBUTOR\`), one of them with many merges there. That is GitHub's \`author_association\` on each pull request as we read it when collecting. It is not kept in the published rows, which carry the repository and number to look it up. So "newcomer" here means outside the project, not always a first-timer.
 
 Bots closed newcomers' pull requests at ${doors.filter((r) => r.byBot > 0).length} projects, and at ${doors.filter((r) => r.byBot >= 5).length} of them five or more times. Reading one bot message at each of those, the reasons were spam or slop detection (juice-shop, scrapy, RSSHub), a no-AI policy (yt-dlp), an application to contribute (postiz), process rules such as being assigned to the issue first (Nettacker, mastg, scikit-learn, uptime-kuma), and a submission checklist (flathub). Some of these are exactly right for those projects. One reply on such a pull request said a spam workflow had closed "a legitimate performance optimization".
 
@@ -56,6 +61,8 @@ We ran the product's own prompt and model (\`${banded[0]?.model ?? 'gpt-6-luna'}
 | high | $25.00 | ${n(banded, 'high')} |
 
 So ${n(banded, 'low') + n(banded, 'medium')} of ${banded.length} (${pct(n(banded, 'low') + n(banded, 'medium'), banded.length)}) could have reached a reviewer for $5 or less, and any review returns the whole hold. ${banded.filter((r) => r.laterMerged).length} of these authors had a pull request merged in the same project later. ${banded.filter((r) => r.flagged).length} contained text aimed at AI reviewers.
+
+A hold would not have helped all of them. Of the ${small.length} sized at $5 or less, ${at(PROCESS)} were at the seven projects whose bot enforces a no-AI policy, an application, a process rule or a checklist, which a hold would not change, and ${at(DETECTORS)} were at the three with a spam or slop detector. The other ${small.length - at(PROCESS) - at(DETECTORS)} were at projects where we read no bot message.
 
 The model and the bots disagree a lot, and that is the point of a second door. At juice-shop it agreed with the spam detector and put most at the maximum. At scrapy it read most of what the spam workflow closed as careful. Either could be wrong. A hold lets a maintainer find out, at no cost to a newcomer acting in good faith.
 

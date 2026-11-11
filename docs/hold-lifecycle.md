@@ -1,6 +1,6 @@
 # The hold lifecycle, tested on the PayPal sandbox
 
-[`scripts/hold-lifecycle.mjs`](../scripts/hold-lifecycle.mjs) makes the same Orders v2 and Payments v2 calls the app makes, on four $5 holds in the PayPal sandbox. PayPal's clock cannot be moved, so the checks after the 3-day honor period ran on holds that had really aged. This is our own run. Every ID below is a sandbox ID.
+[`scripts/hold-lifecycle.mjs`](../scripts/hold-lifecycle.mjs) calls the same Orders v2 and Payments v2 endpoints the app calls, on four $5 holds in the PayPal sandbox. It uses plain REST where the app uses the Server SDK, and it reauthorized with an empty body where the app sends the amount. PayPal's clock cannot be moved, so the checks after the 3-day honor period ran on holds that had really aged. This is our own run. Every ID below is a sandbox ID.
 
 ## What it showed
 
