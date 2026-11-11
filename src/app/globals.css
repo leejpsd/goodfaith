@@ -350,6 +350,31 @@ td.id {
   font-family: var(--typed);
 }
 
+/* The ledger's last two columns say whether PayPal confirmed a row, so its table runs past the
+   text column to keep them on screen. */
+@media (min-width: 72rem) {
+  .page.ledger .scroll {
+    width: calc(100vw - max(1rem, (100vw - 70rem) / 2 + 1rem) - 1.5rem);
+  }
+}
+
+.page.ledger table {
+  font-size: 0.84rem;
+}
+
+.page.ledger th,
+.page.ledger td {
+  padding-right: 0.75rem;
+}
+
+.page.ledger th {
+  white-space: normal;
+}
+
+.page.ledger td.note {
+  min-width: 12rem;
+}
+
 /* Console */
 .console {
   --ag-chart-palette-fills-1-color: #13304a;

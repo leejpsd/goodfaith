@@ -19,18 +19,18 @@ export default async function LedgerPage() {
     .limit(200);
 
   return (
-    <main className="page wide">
+    <main className="page wide ledger">
       <h1>Public ledger</h1>
       <p>Every vouch and every hold event. This demo uses PayPal sandbox money and test accounts.</p>
       <div className="scroll">
       <table>
         <thead>
-          <tr><th>When</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>Reason</th><th>PayPal ID</th><th>PayPal webhook</th><th>Transaction Search</th></tr>
+          <tr><th>When (UTC)</th><th>Event</th><th>Amount</th><th>Pull request</th><th>By</th><th>Reason</th><th>PayPal ID</th><th>PayPal webhook</th><th>Transaction Search</th></tr>
         </thead>
         <tbody>
           {rows.map(({ event, pr, repo }) => (
             <tr key={event.id}>
-              <td>{event.createdAt.toISOString().slice(0, 16).replace('T', ' ')} UTC</td>
+              <td>{event.createdAt.toISOString().slice(0, 16).replace('T', ' ')}</td>
               <td>{LEDGER_LABEL[event.kind]}</td>
               <td>{ledgerAmount(event.kind, event.cents)}</td>
               <td><a href={pr.htmlUrl}>{repo}#{pr.number}</a></td>
