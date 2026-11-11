@@ -2,7 +2,7 @@
 
 A stranger's pull request reaches review in one of two ways: a maintainer vouches for them for free, or they place a refundable PayPal hold that a good-faith review releases. Only a maintainer's command can capture the money. No model can.
 
-- **For judges, seven finished cases and what to look for:** https://goodfaith.onrender.com/judges
+- **For judges, eight finished cases and what to look for:** https://goodfaith.onrender.com/judges
 - **Try it, with no login:** https://goodfaith.onrender.com/try opens a real pull request from a test account, and you play both sides
 - **Maintainer console, on AG Studio:** https://goodfaith.onrender.com/console
 - **Public ledger:** https://goodfaith.onrender.com/ledger
@@ -70,7 +70,7 @@ A pull request that takes neither door gets the label `waiting for vouch or hold
 | Maintainer comments `!release` | Payments v2 void | Released in full |
 | Maintainer comments `!uphold`, or the appeal window closes with no appeal | Payments v2 reauthorize from day 4, then capture | Captured, and on the ledger. If PayPal refuses the reauthorization, the capture tries the original authorization |
 | Maintainer comments `!reverse <reason>` within a day of the capture | Payments v2 refund | Contributor repaid in full |
-| A day after the capture, unreversed | Payouts v1 | Paid to the project's receiver, net of PayPal's fee on the capture. A payout is final |
+| A day after the capture, unreversed | Payouts v1 | Paid to the project's receiver, net of PayPal's fee on the capture. A payout is final. On the live ledger, goodfaith-demo#13's $25.00 capture paid out $23.64 (batch `UYCV9RX37U534`). Two earlier payouts are the full $25.00, made before payouts were net |
 | The contributor disputes the capture at PayPal | Dispute webhooks | The payout stops until PayPal decides, and the ledger records it |
 | Nobody acts for 28 days | Payments v2 void | Released, one day before PayPal would expire it |
 | Any of these, including a change made on PayPal's dashboard | Verified webhooks | Ledger confirmed or corrected |
